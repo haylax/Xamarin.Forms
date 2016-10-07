@@ -135,7 +135,11 @@ namespace Xamarin.Forms.Platform.Android
 
 				((IListViewController)e.NewElement).ScrollToRequested += OnScrollToRequested;
 
-				nativeListView.DividerHeight = 0;
+                nativeListView.Scroll += (se,ev) => {
+                    Element.NotifyScrolled(new Rectangle());
+                };
+
+                nativeListView.DividerHeight = 0;
 				nativeListView.Focusable = false;
 				nativeListView.DescendantFocusability = DescendantFocusability.AfterDescendants;
 				nativeListView.OnFocusChangeListener = this;

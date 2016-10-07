@@ -292,7 +292,13 @@ namespace Xamarin.Forms
 
 		public event EventHandler<ItemTappedEventArgs> ItemTapped;
 
-		public event EventHandler Refreshing;
+        public event EventHandler<Rectangle> Scrolled;
+
+        public event EventHandler<Rectangle> DraggingEnded;
+
+        public event EventHandler<Rectangle> DraggingStarted;
+
+        public event EventHandler Refreshing;
 
 		public void ScrollTo(object item, ScrollToPosition position, bool animated)
 		{
@@ -368,7 +374,37 @@ namespace Xamarin.Forms
 			content.Parent = null;
 		}
 
-		Cell IListViewController.CreateDefaultCell(object item)
+        public virtual void OnScrolled(Rectangle Location)
+        {
+        }
+
+        public virtual void OnDraggingEnded(Rectangle Location)
+        {
+        }
+
+        public virtual void OnDraggingStarted(Rectangle Location)
+        {
+        }
+
+        internal void NotifyScrolled(Rectangle Location)
+        {
+            OnScrolled(Location);
+            Scrolled?.Invoke(this, Location);
+        }
+
+        internal void NotifyDraggingEnded(Rectangle Location)
+        {
+            OnDraggingEnded(Location);
+            DraggingEnded?.Invoke(this, Location);
+        }
+
+        internal void NotifyDraggingStarted(Rectangle Location)
+        {
+            OnDraggingStarted(Location);
+            DraggingStarted?.Invoke(this, Location);
+        }
+
+        Cell IListViewController.CreateDefaultCell(object item)
 		{
 			return CreateDefault(item);
 		}

@@ -208,7 +208,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 				Control.Source = _dataSource = e.NewElement.HasUnevenRows ? new UnevenListViewDataSource(e.NewElement, _tableViewController) : new ListViewDataSource(e.NewElement, _tableViewController);
 
-				UpdateEstimatedRowHeight();
+                UpdateEstimatedRowHeight();
 				UpdateHeader();
 				UpdateFooter();
 				UpdatePullToRefreshEnabled();
@@ -666,7 +666,7 @@ namespace Xamarin.Forms.Platform.iOS
 			bool _isDragging;
 			bool _selectionFromNative;
 
-			public ListViewDataSource(ListViewDataSource source)
+            public ListViewDataSource(ListViewDataSource source)
 			{
 				_uiTableViewController = source._uiTableViewController;
 				List = source.List;
@@ -700,12 +700,14 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				_isDragging = false;
 				_uiTableViewController.UpdateShowHideRefresh(false);
-			}
+                List.NotifyDraggingEnded(new Rectangle(scrollView.ContentOffset.X, scrollView.ContentOffset.Y, scrollView.ContentSize.Width, scrollView.ContentSize.Height));
+            }
 
 			public override void DraggingStarted(UIScrollView scrollView)
 			{
 				_isDragging = true;
-			}
+                List.NotifyDraggingStarted(new Rectangle(scrollView.ContentOffset.X, scrollView.ContentOffset.Y, scrollView.ContentSize.Width, scrollView.ContentSize.Height));
+            }
 
 			public override UITableViewCell GetCell(UITableView tableView, NSIndexPath indexPath)
 			{
@@ -873,7 +875,9 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				if (_isDragging && scrollView.ContentOffset.Y < 0)
 					_uiTableViewController.UpdateShowHideRefresh(true);
-			}
+
+                List.NotifyScrolled(new Rectangle(scrollView.ContentOffset.X, scrollView.ContentOffset.Y, scrollView.ContentSize.Width, scrollView.ContentSize.Height));
+            }
 
 			public override string[] SectionIndexTitles(UITableView tableView)
 			{
@@ -985,7 +989,7 @@ namespace Xamarin.Forms.Platform.iOS
 				}
 			}
 		}
-	}
+    }
 
 	internal class HeaderWrapperView : UIView
 	{
