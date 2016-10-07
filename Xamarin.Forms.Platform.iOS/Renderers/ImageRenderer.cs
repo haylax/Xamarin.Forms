@@ -184,16 +184,24 @@ namespace Xamarin.Forms.Platform.iOS
 		public async Task<UIImage> LoadImageAsync(ImageSource imagesource, CancellationToken cancelationToken = default(CancellationToken), float scale = 1f)
 		{
 			UIImage image = null;
-			var imageLoader = imagesource as UriImageSource;
-			if (imageLoader != null && imageLoader.Uri != null)
-			{
-				using (var streamImage = await imageLoader.GetStreamAsync(cancelationToken).ConfigureAwait(false))
-				{
-					if (streamImage != null)
-						image = UIImage.LoadFromData(NSData.FromStream(streamImage), scale);
-				}
-			}
-			return image;
+            try
+            {
+                var streamsource = imagesource as StreamImageSource;
+                if (streamsource != null && streamsource.Stream != null)
+                {
+                    using (var streamImage = await ((IStreamImageSource)streamsource).GetStreamAsync(cancelationToken).ConfigureAwait(false))
+                    {
+                        if (streamImage != null)
+                            image = UIImage.LoadFromData(NSData.FromStream(streamImage), scale);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                Log.Warning(null, ex.ToString());
+            }
+            return image;
 		}
 	}
 }
