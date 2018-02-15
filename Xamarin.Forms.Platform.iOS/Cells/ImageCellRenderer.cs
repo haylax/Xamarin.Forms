@@ -1,14 +1,7 @@
 using System.ComponentModel;
 using System.Threading.Tasks;
-using Xamarin.Forms.Internals;
-#if __UNIFIED__
-using UIKit;
 using Foundation;
-
-#else
-using MonoTouch.UIKit;
-using MonoTouch.Foundation;
-#endif
+using UIKit;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -46,7 +39,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			IImageSourceHandler handler;
 
-			if (source != null && (handler = Registrar.Registered.GetHandler<IImageSourceHandler>(source.GetType())) != null)
+			if (source != null && (handler = Internals.Registrar.Registered.GetHandlerForObject<IImageSourceHandler>(source)) != null)
 			{
 				UIImage uiimage;
 				try
@@ -60,8 +53,13 @@ namespace Xamarin.Forms.Platform.iOS
 
 				NSRunLoop.Main.BeginInvokeOnMainThread(() =>
 				{
-					target.ImageView.Image = uiimage;
-					target.SetNeedsLayout();
+					if (target.Cell != null)
+					{
+						target.ImageView.Image = uiimage;
+						target.SetNeedsLayout();
+					}
+					else
+						uiimage?.Dispose();
 				});
 			}
 			else

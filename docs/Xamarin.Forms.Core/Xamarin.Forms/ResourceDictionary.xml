@@ -1,6 +1,6 @@
 <Type Name="ResourceDictionary" FullName="Xamarin.Forms.ResourceDictionary">
-  <TypeSignature Language="C#" Value="public class ResourceDictionary : System.Collections.Generic.ICollection&lt;System.Collections.Generic.KeyValuePair&lt;string,object&gt;&gt;, System.Collections.Generic.IDictionary&lt;string,object&gt;, System.Collections.Generic.IEnumerable&lt;System.Collections.Generic.KeyValuePair&lt;string,object&gt;&gt;" />
-  <TypeSignature Language="ILAsm" Value=".class public auto ansi beforefieldinit ResourceDictionary extends System.Object implements class System.Collections.Generic.ICollection`1&lt;valuetype System.Collections.Generic.KeyValuePair`2&lt;string, object&gt;&gt;, class System.Collections.Generic.IDictionary`2&lt;string, object&gt;, class System.Collections.Generic.IEnumerable`1&lt;valuetype System.Collections.Generic.KeyValuePair`2&lt;string, object&gt;&gt;, class System.Collections.IEnumerable" />
+  <TypeSignature Language="C#" Value="public class ResourceDictionary : System.Collections.Generic.ICollection&lt;System.Collections.Generic.KeyValuePair&lt;string,object&gt;&gt;, System.Collections.Generic.IDictionary&lt;string,object&gt;, System.Collections.Generic.IEnumerable&lt;System.Collections.Generic.KeyValuePair&lt;string,object&gt;&gt;, Xamarin.Forms.Internals.IResourceDictionary" />
+  <TypeSignature Language="ILAsm" Value=".class public auto ansi beforefieldinit ResourceDictionary extends System.Object implements class System.Collections.Generic.ICollection`1&lt;valuetype System.Collections.Generic.KeyValuePair`2&lt;string, object&gt;&gt;, class System.Collections.Generic.IDictionary`2&lt;string, object&gt;, class System.Collections.Generic.IEnumerable`1&lt;valuetype System.Collections.Generic.KeyValuePair`2&lt;string, object&gt;&gt;, class System.Collections.IEnumerable, class Xamarin.Forms.Internals.IResourceDictionary" />
   <AssemblyInfo>
     <AssemblyName>Xamarin.Forms.Core</AssemblyName>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -23,6 +23,9 @@
     </Interface>
     <Interface>
       <InterfaceName>System.Collections.Generic.IEnumerable&lt;System.Collections.Generic.KeyValuePair&lt;System.String,System.Object&gt;&gt;</InterfaceName>
+    </Interface>
+    <Interface>
+      <InterfaceName>Xamarin.Forms.Internals.IResourceDictionary</InterfaceName>
     </Interface>
   </Interfaces>
   <Docs>
@@ -50,6 +53,25 @@
       </Docs>
     </Member>
     <Member MemberName="Add">
+      <MemberSignature Language="C#" Value="public void Add (Xamarin.Forms.ResourceDictionary mergedResourceDictionary);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig instance void Add(class Xamarin.Forms.ResourceDictionary mergedResourceDictionary) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="mergedResourceDictionary" Type="Xamarin.Forms.ResourceDictionary" />
+      </Parameters>
+      <Docs>
+        <param name="mergedResourceDictionary">To be added.</param>
+        <summary>To be added.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="Add">
       <MemberSignature Language="C#" Value="public void Add (Xamarin.Forms.Style style);" />
       <MemberSignature Language="ILAsm" Value=".method public hidebysig instance void Add(class Xamarin.Forms.Style style) cil managed" />
       <MemberType>Method</MemberType>
@@ -66,12 +88,31 @@
         <Parameter Name="implicitStyle" Type="Xamarin.Forms.Style" />
       </Parameters>
       <Docs>
-        <param name="style">To be added.</param>
+        <param name="style">The implicit style to add.</param>
         <summary>
           <para>Add an implicit Style to the ResourceDictionary. Implicit Styles are applied to all VisualElements matching TargetType in the descendants of this ResourceDictionary owner, unless a Style is explicitely applied to the Element.</para>
           <para />
           <para>Implicit Styles are added to a ResourceDictionary in XAML by not specifying an x:Key for the Element.</para>
         </summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="Add">
+      <MemberSignature Language="C#" Value="public void Add (Xamarin.Forms.StyleSheets.StyleSheet styleSheet);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig instance void Add(class Xamarin.Forms.StyleSheets.StyleSheet styleSheet) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="styleSheet" Type="Xamarin.Forms.StyleSheets.StyleSheet" />
+      </Parameters>
+      <Docs>
+        <param name="styleSheet">To be added.</param>
+        <summary>To be added.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -243,6 +284,22 @@
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
+    <Member MemberName="MergedDictionaries">
+      <MemberSignature Language="C#" Value="public System.Collections.Generic.ICollection&lt;Xamarin.Forms.ResourceDictionary&gt; MergedDictionaries { get; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class System.Collections.Generic.ICollection`1&lt;class Xamarin.Forms.ResourceDictionary&gt; MergedDictionaries" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Collections.Generic.ICollection&lt;Xamarin.Forms.ResourceDictionary&gt;</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>To be added.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="MergedWith">
       <MemberSignature Language="C#" Value="public Type MergedWith { get; set; }" />
       <MemberSignature Language="ILAsm" Value=".property instance class System.Type MergedWith" />
@@ -252,6 +309,9 @@
       </AssemblyInfo>
       <Attributes>
         <Attribute>
+          <AttributeName>System.Obsolete("Use Source")</AttributeName>
+        </Attribute>
+        <Attribute>
           <AttributeName>Xamarin.Forms.TypeConverter(typeof(Xamarin.Forms.TypeTypeConverter))</AttributeName>
         </Attribute>
       </Attributes>
@@ -259,8 +319,8 @@
         <ReturnType>System.Type</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
+        <summary>Gets or sets the type of object with which the resource dictionary is merged.</summary>
+        <value>The type of object with which the resource dictionary is merged, or null if the dictionary is not merged with another.</value>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -291,6 +351,57 @@
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
+    <Member MemberName="SetAndLoadSource">
+      <MemberSignature Language="C#" Value="public void SetAndLoadSource (Uri value, string resourcePath, System.Reflection.Assembly assembly, System.Xml.IXmlLineInfo lineInfo);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig instance void SetAndLoadSource(class System.Uri value, string resourcePath, class System.Reflection.Assembly assembly, class System.Xml.IXmlLineInfo lineInfo) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="value" Type="System.Uri" />
+        <Parameter Name="resourceID" Type="System.String" />
+        <Parameter Name="assembly" Type="System.Reflection.Assembly" />
+        <Parameter Name="lineInfo" Type="System.Xml.IXmlLineInfo" />
+      </Parameters>
+      <Docs>
+        <param name="value">To be added.</param>
+        <param name="resourcePath">To be added.</param>
+        <param name="assembly">To be added.</param>
+        <param name="lineInfo">To be added.</param>
+        <summary>To be added.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="Source">
+      <MemberSignature Language="C#" Value="public Uri Source { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class System.Uri Source" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>Xamarin.Forms.TypeConverter(typeof(Xamarin.Forms.ResourceDictionary/RDSourceTypeConverter))</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Uri</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>To be added.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="System.Collections.Generic.ICollection&lt;System.Collections.Generic.KeyValuePair&lt;System.String,System.Object&gt;&gt;.Add">
       <MemberSignature Language="C#" Value="void ICollection&lt;KeyValuePair&lt;string,object&gt;&gt;.Add (System.Collections.Generic.KeyValuePair&lt;string,object&gt; item);" />
       <MemberSignature Language="ILAsm" Value=".method hidebysig newslot virtual instance void System.Collections.Generic.ICollection&lt;System.Collections.Generic.KeyValuePair&lt;System.String,System.Object&gt;&gt;.Add(valuetype System.Collections.Generic.KeyValuePair`2&lt;string, object&gt; item) cil managed" />
@@ -311,7 +422,7 @@
         <Parameter Name="item" Type="System.Collections.Generic.KeyValuePair&lt;System.String,System.Object&gt;" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
+        <param name="item">The item to add.</param>
         <summary>Adds an item to the collection.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -336,7 +447,7 @@
         <Parameter Name="item" Type="System.Collections.Generic.KeyValuePair&lt;System.String,System.Object&gt;" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
+        <param name="item">The item to add.</param>
         <summary>Returns a value that indicates whether the dictionary contains the value in <paramref name="item" />, indexed by the key in <paramref name="item" />.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
@@ -363,9 +474,9 @@
         <Parameter Name="arrayIndex" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="array">To be added.</param>
-        <param name="arrayIndex">To be added.</param>
-        <summary>Copies the values in the dictionary to <paramref name="array" />, starting at position <paramref name="arrayIndex" /> in <paramref name="array" />.</summary>
+        <param name="array">For internal use by the Xamarin.Forms platform.</param>
+        <param name="arrayIndex">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -411,8 +522,8 @@
         <Parameter Name="item" Type="System.Collections.Generic.KeyValuePair&lt;System.String,System.Object&gt;" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
-        <summary>Removes the value in <paramref name="item" />, indexed by the key in <paramref name="item" />, from the dictionary, if present.</summary>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -435,8 +546,8 @@
       </ReturnValue>
       <Parameters />
       <Docs>
-        <summary>Returns a <see cref="T:System.Collections.IEnumerator" /> of the <see cref="T:Xamarin.Forms.ResourceDictionary" />'s <see cref="T:System.Collections.Generic.KeyValuePair`1" />s.</summary>
-        <returns>An <see cref="T:System.Collections.IEnumerator" /> of the <see cref="T:Xamarin.Forms.ResourceDictionary" />'s <see cref="T:System.Collections.Generic.KeyValuePair`1" />s.</returns>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>

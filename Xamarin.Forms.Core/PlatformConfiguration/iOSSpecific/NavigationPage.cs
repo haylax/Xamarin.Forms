@@ -5,6 +5,7 @@ namespace Xamarin.Forms.PlatformConfiguration.iOSSpecific
 
 	public static class NavigationPage
 	{
+		#region Translucent
 		public static readonly BindableProperty IsNavigationBarTranslucentProperty =
 			BindableProperty.Create("IsNavigationBarTranslucent", typeof(bool),
 			typeof(NavigationPage), false);
@@ -36,10 +37,62 @@ namespace Xamarin.Forms.PlatformConfiguration.iOSSpecific
 			return config;
 		}
 
-		public static IPlatformElementConfiguration<iOS, FormsElement>DisableTranslucentNavigationBar(this IPlatformElementConfiguration<iOS, FormsElement> config)
+		public static IPlatformElementConfiguration<iOS, FormsElement> DisableTranslucentNavigationBar(this IPlatformElementConfiguration<iOS, FormsElement> config)
 		{
 			SetIsNavigationBarTranslucent(config.Element, false);
 			return config;
+		}
+		#endregion
+
+
+		#region StatusBarTextColorMode
+		public static readonly BindableProperty StatusBarTextColorModeProperty =
+			BindableProperty.Create("StatusBarColorTextMode", typeof(StatusBarTextColorMode),
+			typeof(NavigationPage), StatusBarTextColorMode.MatchNavigationBarTextLuminosity);
+
+		public static StatusBarTextColorMode GetStatusBarTextColorMode(BindableObject element)
+		{
+			return (StatusBarTextColorMode)element.GetValue(StatusBarTextColorModeProperty);
+		}
+
+		public static void SetStatusBarTextColorMode(BindableObject element, StatusBarTextColorMode value)
+		{
+			element.SetValue(StatusBarTextColorModeProperty, value);
+		}
+
+		public static StatusBarTextColorMode GetStatusBarTextColorMode(this IPlatformElementConfiguration<iOS, FormsElement> config)
+		{
+			return GetStatusBarTextColorMode(config.Element);
+		}
+
+		public static IPlatformElementConfiguration<iOS, FormsElement> SetStatusBarTextColorMode(this IPlatformElementConfiguration<iOS, FormsElement> config, StatusBarTextColorMode value)
+		{
+			SetStatusBarTextColorMode(config.Element, value);
+			return config;
+		}
+		#endregion
+
+		public static readonly BindableProperty PrefersLargeTitlesProperty = BindableProperty.Create(nameof(PrefersLargeTitles), typeof(bool), typeof(Page), false);
+
+		public static bool GetPrefersLargeTitles(BindableObject element)
+		{
+			return (bool)element.GetValue(PrefersLargeTitlesProperty);
+		}
+
+		public static void SetPrefersLargeTitles(BindableObject element, bool value)
+		{
+			element.SetValue(PrefersLargeTitlesProperty, value);
+		}
+
+		public static IPlatformElementConfiguration<iOS, FormsElement> SetPrefersLargeTitles(this IPlatformElementConfiguration<iOS, FormsElement> config, bool value)
+		{
+			SetPrefersLargeTitles(config.Element, value);
+			return config;
+		}
+
+		public static bool PrefersLargeTitles(this IPlatformElementConfiguration<iOS, FormsElement> config)
+		{
+			return GetPrefersLargeTitles(config.Element);
 		}
 	}
 }

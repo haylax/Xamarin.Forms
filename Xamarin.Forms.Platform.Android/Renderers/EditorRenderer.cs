@@ -1,20 +1,35 @@
+using System;
 using System.ComponentModel;
+using Android.Content;
 using Android.Content.Res;
+using Android.OS;
 using Android.Text;
+using Android.Text.Method;
 using Android.Util;
 using Android.Views;
 using Java.Lang;
+using Xamarin.Forms.Internals;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
 
 namespace Xamarin.Forms.Platform.Android
 {
-	public class EditorRenderer : ViewRenderer<Editor, EditorEditText>, ITextWatcher
+	public class EditorRenderer : ViewRenderer<Editor, FormsEditText>, ITextWatcher
 	{
-		ColorStateList _defaultColors;
+		bool _disposed;
+		TextColorSwitcher _textColorSwitcher;
 
+		public EditorRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use EditorRenderer(Context) instead.")]
 		public EditorRenderer()
 		{
 			AutoPackage = false;
 		}
+
+		IEditorController ElementController => Element;
 
 		void ITextWatcher.AfterTextChanged(IEditable s)
 		{
@@ -33,9 +48,9 @@ namespace Xamarin.Forms.Platform.Android
 				((IElementController)Element).SetValueFromRenderer(Editor.TextProperty, s.ToString());
 		}
 
-		protected override EditorEditText CreateNativeControl()
+		protected override FormsEditText CreateNativeControl()
 		{
-			return new EditorEditText(Context);
+			return new FormsEditText(Context);
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<Editor> e)
@@ -44,22 +59,23 @@ namespace Xamarin.Forms.Platform.Android
 
 			HandleKeyboardOnFocus = true;
 
-			EditorEditText edit = Control;
+			var edit = Control;
 			if (edit == null)
 			{
 				edit = CreateNativeControl();
 
 				SetNativeControl(edit);
 				edit.AddTextChangedListener(this);
-				edit.OnBackKeyboardPressed += (sender, args) =>
-				{
-					Element.SendCompleted();
-					edit.ClearFocus();
-				};
+				edit.OnKeyboardBackPressed += OnKeyboardBackPressed;
+
+				var useLegacyColorManagement = e.NewElement.UseLegacyColorManagement();
+				_textColorSwitcher = new TextColorSwitcher(edit.TextColors, useLegacyColorManagement);
 			}
 
 			edit.SetSingleLine(false);
 			edit.Gravity = GravityFlags.Top;
+			if ((int)Build.VERSION.SdkInt > 16)
+				edit.TextAlignment = global::Android.Views.TextAlignment.ViewStart;
 			edit.SetHorizontallyScrolling(false);
 
 			UpdateText();
@@ -86,10 +102,38 @@ namespace Xamarin.Forms.Platform.Android
 			base.OnElementPropertyChanged(sender, e);
 		}
 
+		protected override void Dispose(bool disposing)
+		{
+			if (_disposed)
+			{
+				return;
+			}
+
+			_disposed = true;
+
+			if (disposing)
+			{
+				if (Control != null)
+				{
+					Control.OnKeyboardBackPressed -= OnKeyboardBackPressed;
+				}
+			}
+
+			base.Dispose(disposing);
+		}
+
+		protected virtual NumberKeyListener GetDigitsKeyListener(InputTypes inputTypes)
+		{
+			// Override this in a custom renderer to use a different NumberKeyListener 
+			// or to filter out input types you don't want to allow 
+			// (e.g., inputTypes &= ~InputTypes.NumberFlagSigned to disallow the sign)
+			return LocalizedDigitsKeyListener.Create(inputTypes);
+		}
+
 		internal override void OnNativeFocusChanged(bool hasFocus)
 		{
 			if (Element.IsFocused && !hasFocus) // Editor has requested an unfocus, fire completed event
-				Element.SendCompleted();
+				ElementController.SendCompleted();
 		}
 
 		void UpdateFont()
@@ -101,8 +145,15 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateInputType()
 		{
 			Editor model = Element;
-			EditorEditText edit = Control;
-			edit.InputType = model.Keyboard.ToInputType() | InputTypes.TextFlagMultiLine;
+			FormsEditText edit = Control;
+			var keyboard = model.Keyboard;
+
+			edit.InputType = keyboard.ToInputType() | InputTypes.TextFlagMultiLine;
+
+			if (keyboard == Keyboard.Numeric)
+			{
+				edit.KeyListener = GetDigitsKeyListener(edit.InputType);
+			}
 		}
 
 		void UpdateText()
@@ -118,28 +169,13 @@ namespace Xamarin.Forms.Platform.Android
 
 		void UpdateTextColor()
 		{
-			if (Element.TextColor.IsDefault)
-			{
-				if (_defaultColors == null)
-				{
-					// This control has always had the default colors; nothing to update
-					return;
-				}
+			_textColorSwitcher?.UpdateTextColor(Control, Element.TextColor);
+		}
 
-				// This control is being set back to the default colors
-				Control.SetTextColor(_defaultColors);
-			}
-			else
-			{
-				if (_defaultColors == null)
-				{
-					// Keep track of the default colors so we can return to them later
-					// and so we can preserve the default disabled color
-					_defaultColors = Control.TextColors;
-				}
-
-				Control.SetTextColor(Element.TextColor.ToAndroidPreserveDisabled(_defaultColors));
-			}
+		void OnKeyboardBackPressed(object sender, EventArgs eventArgs)
+		{
+			ElementController?.SendCompleted();
+			Control?.ClearFocus();
 		}
 	}
 }

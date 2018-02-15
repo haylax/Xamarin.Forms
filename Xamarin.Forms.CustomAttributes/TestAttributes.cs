@@ -48,33 +48,44 @@ namespace Xamarin.Forms.CustomAttributes
 	{
 		bool _modal;
 
-		public IssueAttribute (IssueTracker issueTracker, int issueNumber, string description, NavigationBehavior navigationBehavior = NavigationBehavior.Default)
+		public IssueAttribute (IssueTracker issueTracker, int issueNumber, string description, 
+			NavigationBehavior navigationBehavior = NavigationBehavior.Default, int issueTestNumber = 0)
 		{
 			IssueTracker = issueTracker;
 			IssueNumber = issueNumber;
 			Description = description;
 			PlatformsAffected = PlatformAffected.Default;
 			NavigationBehavior = navigationBehavior;
+			IssueTestNumber = issueTestNumber;
 		}
 
-		public IssueAttribute (IssueTracker issueTracker, int issueNumber, string description, PlatformAffected platformsAffected, NavigationBehavior navigationBehavior = NavigationBehavior.Default)
+		public IssueAttribute (IssueTracker issueTracker, int issueNumber, string description, 
+			PlatformAffected platformsAffected, NavigationBehavior navigationBehavior = NavigationBehavior.Default, 
+			int issueTestNumber = 0)
 		{
 			IssueTracker = issueTracker;
 			IssueNumber = issueNumber;
 			Description = description;
 			PlatformsAffected = platformsAffected;
 			NavigationBehavior = navigationBehavior;
+			IssueTestNumber = issueTestNumber;
 		}
 
 		public IssueTracker IssueTracker { get; }
 
 		public int IssueNumber { get; }
 
+		public int IssueTestNumber { get; }
+
 		public string Description { get; }
 
 		public PlatformAffected PlatformsAffected { get; }
 
 		public NavigationBehavior NavigationBehavior { get; }
+
+		public string DisplayName => IssueTestNumber == 0
+			? $"{IssueTracker.ToString().Substring(0, 1)}{IssueNumber}"
+			: $"{IssueTracker.ToString().Substring(0, 1)}{IssueNumber} ({IssueTestNumber})";
 	}
 
 	[Conditional ("DEBUG")]
@@ -135,6 +146,7 @@ namespace Xamarin.Forms.CustomAttributes
 		Android = 1 << 1,
 		WinPhone = 1 << 2,
 		WinRT = 1 << 3,
+		UWP = 1 << 4,
 		All = ~0,
 		Default = 0
 	}
@@ -413,7 +425,8 @@ namespace Xamarin.Forms.CustomAttributes
 			IsGroupingEnabled,
 			GroupDisplayBinding,
 			GroupShortNameBinding,
-			ScrollTo
+			ScrollTo,
+			FastScroll
 		}
 
 		public enum TableView
@@ -465,7 +478,10 @@ namespace Xamarin.Forms.CustomAttributes
 			MaximumDate,
 			Focus,
 			IsVisible,
-			TextColor
+			TextColor,
+			FontAttributes,
+			FontFamily,
+			FontSize
 		}
 
 		public enum InputView
@@ -654,13 +670,17 @@ namespace Xamarin.Forms.CustomAttributes
 			Format,
 			Time,
 			Focus,
-			TextColor
+			TextColor,
+			FontAttributes,
+			FontFamily,
+			FontSize
 		}
 
 		public enum WebView {
 			UrlWebViewSource,
 			HtmlWebViewSource,
-			LoadHtml
+			LoadHtml,
+			JavaScriptAlert
 		}
 
 		public enum UrlWebViewSource {
@@ -693,7 +713,10 @@ namespace Xamarin.Forms.CustomAttributes
 			Items,
 			SelectedIndex,
 			Focus,
-			TextColor
+			TextColor,
+			FontAttributes,
+			FontFamily,
+			FontSize
 		}
 
 		public enum FileImageSource {

@@ -3,30 +3,40 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms
 {
-	public class RelativeLayout : Layout<View>
+	public class RelativeLayout : Layout<View>, IElementConfiguration<RelativeLayout>
 	{
-		public static readonly BindableProperty XConstraintProperty = BindableProperty.CreateAttached("XConstraint", typeof(Constraint), typeof(RelativeLayout), null);
+		public static readonly BindableProperty XConstraintProperty = BindableProperty.CreateAttached("XConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
-		public static readonly BindableProperty YConstraintProperty = BindableProperty.CreateAttached("YConstraint", typeof(Constraint), typeof(RelativeLayout), null);
+		public static readonly BindableProperty YConstraintProperty = BindableProperty.CreateAttached("YConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
-		public static readonly BindableProperty WidthConstraintProperty = BindableProperty.CreateAttached("WidthConstraint", typeof(Constraint), typeof(RelativeLayout), null);
+		public static readonly BindableProperty WidthConstraintProperty = BindableProperty.CreateAttached("WidthConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
-		public static readonly BindableProperty HeightConstraintProperty = BindableProperty.CreateAttached("HeightConstraint", typeof(Constraint), typeof(RelativeLayout), null);
+		public static readonly BindableProperty HeightConstraintProperty = BindableProperty.CreateAttached("HeightConstraint", typeof(Constraint), typeof(RelativeLayout), null, propertyChanged: ConstraintChanged);
 
 		public static readonly BindableProperty BoundsConstraintProperty = BindableProperty.CreateAttached("BoundsConstraint", typeof(BoundsConstraint), typeof(RelativeLayout), null);
 
 		readonly RelativeElementCollection _children;
 
 		IEnumerable<View> _childrenInSolveOrder;
+		readonly Lazy<PlatformConfigurationRegistry<RelativeLayout>> _platformConfigurationRegistry;
 
 		public RelativeLayout()
 		{
 			VerticalOptions = HorizontalOptions = LayoutOptions.FillAndExpand;
 			_children = new RelativeElementCollection(InternalChildren, this);
 			_children.Parent = this;
+
+			_platformConfigurationRegistry = new Lazy<PlatformConfigurationRegistry<RelativeLayout>>(() => 
+				new PlatformConfigurationRegistry<RelativeLayout>(this));
+		}
+
+		public IPlatformElementConfiguration<T, RelativeLayout> On<T>() where T : IConfigPlatform
+		{
+			return _platformConfigurationRegistry.Value.On<T>();
 		}
 
 		public new IRelativeList<View> Children
@@ -72,6 +82,25 @@ namespace Xamarin.Forms
 			}
 		}
 
+		static void ConstraintChanged(BindableObject bindable, object oldValue, object newValue)
+		{
+			View view = bindable as View;
+
+			(view?.Parent as RelativeLayout)?.UpdateBoundsConstraint(view);
+		}
+
+		void UpdateBoundsConstraint(View view)
+		{
+			if (GetBoundsConstraint(view) == null)
+				return; // Bounds constraint hasn't been calculated yet, no need to update just yet
+
+			CreateBoundsFromConstraints(view, GetXConstraint(view), GetYConstraint(view), GetWidthConstraint(view), GetHeightConstraint(view));
+
+			_childrenInSolveOrder = null; // New constraints may have impact on solve order
+
+			InvalidateLayout();
+		}
+
 		public static BoundsConstraint GetBoundsConstraint(BindableObject bindable)
 		{
 			return (BoundsConstraint)bindable.GetValue(BoundsConstraintProperty);
@@ -102,6 +131,26 @@ namespace Xamarin.Forms
 			bindable.SetValue(BoundsConstraintProperty, value);
 		}
 
+		public static void SetHeightConstraint(BindableObject bindable, Constraint value)
+		{
+			bindable.SetValue(HeightConstraintProperty, value);
+		}
+
+		public static void SetWidthConstraint(BindableObject bindable, Constraint value)
+		{
+			bindable.SetValue(WidthConstraintProperty, value);
+		}
+
+		public static void SetXConstraint(BindableObject bindable, Constraint value)
+		{
+			bindable.SetValue(XConstraintProperty, value);
+		}
+
+		public static void SetYConstraint(BindableObject bindable, Constraint value)
+		{
+			bindable.SetValue(YConstraintProperty, value);
+		}
+
 		protected override void LayoutChildren(double x, double y, double width, double height)
 		{
 			foreach (View child in ChildrenInSolveOrder)
@@ -129,7 +178,7 @@ namespace Xamarin.Forms
 			base.OnRemoved(view);
 		}
 
-		[Obsolete("Use OnMeasure")]
+		[Obsolete("OnSizeRequest is obsolete as of version 2.2.0. Please use OnMeasure instead.")]
 		protected override SizeRequest OnSizeRequest(double widthConstraint, double heightConstraint)
 		{
 			double mockWidth = double.IsPositiveInfinity(widthConstraint) ? ParentView.Width : widthConstraint;
@@ -248,13 +297,13 @@ namespace Xamarin.Forms
 		static Rectangle SolveView(View view)
 		{
 			BoundsConstraint boundsConstraint = GetBoundsConstraint(view);
-			var result = new Rectangle();
 
 			if (boundsConstraint == null)
 			{
 				throw new Exception("BoundsConstraint should not be null at this point");
 			}
-			result = boundsConstraint.Compute();
+
+			var result = boundsConstraint.Compute();
 
 			return result;
 		}
@@ -280,7 +329,7 @@ namespace Xamarin.Forms
 			public void Add(View view, Expression<Func<Rectangle>> bounds)
 			{
 				if (bounds == null)
-					throw new ArgumentNullException("bounds");
+					throw new ArgumentNullException(nameof(bounds));
 				SetBoundsConstraint(view, BoundsConstraint.FromExpression(bounds));
 
 				base.Add(view);
@@ -308,7 +357,14 @@ namespace Xamarin.Forms
 
 			public void Add(View view, Constraint xConstraint = null, Constraint yConstraint = null, Constraint widthConstraint = null, Constraint heightConstraint = null)
 			{
-				Parent.CreateBoundsFromConstraints(view, xConstraint, yConstraint, widthConstraint, heightConstraint);
+				view.BatchBegin();
+
+				RelativeLayout.SetXConstraint(view, xConstraint);
+				RelativeLayout.SetYConstraint(view, yConstraint);
+				RelativeLayout.SetWidthConstraint(view, widthConstraint);
+				RelativeLayout.SetHeightConstraint(view, heightConstraint);
+
+				view.BatchCommit();
 
 				base.Add(view);
 			}

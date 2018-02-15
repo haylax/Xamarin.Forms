@@ -1,15 +1,22 @@
 ﻿using System;
-
 using Xamarin.Forms.CustomAttributes;
 using Xamarin.Forms.Internals;
+using Xamarin.Forms.PlatformConfiguration;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
 
 #if UITEST
 using Xamarin.UITest;
 using NUnit.Framework;
+using Xamarin.Forms.Core.UITests;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
+#if UITEST
+	[Category(UITestCategories.BoxView)]
+	[Category(UITestCategories.InputTransparent)]
+#endif
+
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Bugzilla, 39331, "[Android] BoxView Is InputTransparent Even When Set to False")]
 	public class Bugzilla39331 : TestContentPage
@@ -41,6 +48,10 @@ namespace Xamarin.Forms.Controls
 				IsVisible = false,
 				InputTransparent = false
 			};
+
+			// Bump up elevation on Android to cover FastRenderer Button
+			((BoxView)_busyBackground).On<Android>().SetElevation(10f);
+
 			layout.Children.Add (_busyBackground, new Rectangle (0, 0, 1, 1), AbsoluteLayoutFlags.SizeProportional);
 
 			Content = layout;
@@ -60,7 +71,7 @@ namespace Xamarin.Forms.Controls
 
 #if UITEST
 		[Test]
-		public void Bugzilla34912Test ()
+		public void Bugzilla39331Test()
 		{
 			RunningApp.Tap (q => q.Marked ("Press me"));
 			RunningApp.WaitForElement (q => q.Marked ("Blocked?"));

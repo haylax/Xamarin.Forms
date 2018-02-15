@@ -11,8 +11,11 @@ using NUnit.Framework;
 using System.Diagnostics;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
+#if UITEST
+	[Ignore("Temporarily ignoring until we can investigate intermittent failures")]
+#endif
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Github, 1691, "CarouselPage iOS CurrentPage bug")]
 	public class Issue1691 : TestCarouselPage

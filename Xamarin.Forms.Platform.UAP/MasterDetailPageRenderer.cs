@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Media;
@@ -18,7 +17,7 @@ namespace Xamarin.Forms.Platform.UWP
 		bool _showTitle;
 
 		VisualElementTracker<Page, FrameworkElement> _tracker;
-
+		
 		public MasterDetailControl Control { get; private set; }
 
 		public MasterDetailPage Element { get; private set; }
@@ -57,10 +56,6 @@ namespace Xamarin.Forms.Platform.UWP
 		{
 			set { Control.ToolbarForeground = value; }
 		}
-		
-		IPageController PageController => Element as IPageController;
-
-		IMasterDetailPageController MasterDetailPageController => Element as IMasterDetailPageController;
 
 		bool ITitleProvider.ShowTitle
 		{
@@ -112,6 +107,11 @@ namespace Xamarin.Forms.Platform.UWP
 			return new SizeRequest(new Size(size.Width, size.Height));
 		}
 
+		UIElement IVisualElementRenderer.GetNativeElement()
+		{
+			return Control;
+		}
+
 		public void SetElement(VisualElement element)
 		{
 			MasterDetailPage old = Element;
@@ -141,24 +141,22 @@ namespace Xamarin.Forms.Platform.UWP
 				}
 
 				e.NewElement.PropertyChanged += OnElementPropertyChanged;
+				UpdateMode();
 				UpdateDetail();
 				UpdateMaster();
-				UpdateMode();
 				UpdateIsPresented();
 
 				if (!string.IsNullOrEmpty(e.NewElement.AutomationId))
-					Control.SetValue(AutomationProperties.AutomationIdProperty, e.NewElement.AutomationId);
+					Control.SetValue(Windows.UI.Xaml.Automation.AutomationProperties.AutomationIdProperty, e.NewElement.AutomationId);
 
-#if WINDOWS_UWP
-                UpdateToolbarPlacement();
-#endif
-
-            }
+				((ITitleProvider)this).BarBackgroundBrush = (Brush)Windows.UI.Xaml.Application.Current.Resources["SystemControlBackgroundChromeMediumLowBrush"];
+				UpdateToolbarPlacement();
+			}
 		}
 
 		protected virtual void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName == MasterDetailPage.IsPresentedProperty.PropertyName)
+			if (e.PropertyName == MasterDetailPage.IsPresentedProperty.PropertyName || e.PropertyName == MasterDetailPage.MasterBehaviorProperty.PropertyName)
 				UpdateIsPresented();
 			else if (e.PropertyName == "Master")
 				UpdateMaster();
@@ -170,6 +168,8 @@ namespace Xamarin.Forms.Platform.UWP
 				UpdateMode();
 			else if(e.PropertyName ==  PlatformConfiguration.WindowsSpecific.Page.ToolbarPlacementProperty.PropertyName)
 				UpdateToolbarPlacement();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateFlowDirection();
 		}
 
 		void ClearDetail()
@@ -207,13 +207,14 @@ namespace Xamarin.Forms.Platform.UWP
 			if (Element == null)
 				return;
 
-			PageController.SendAppearing();
+			Element.SendAppearing();
 			UpdateBounds();
+			UpdateFlowDirection();
 		}
 
 		void OnControlUnloaded(object sender, RoutedEventArgs routedEventArgs)
 		{
-			PageController?.SendDisappearing();
+			Element?.SendDisappearing();
 		}
 
 		void OnDetailPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -244,8 +245,8 @@ namespace Xamarin.Forms.Platform.UWP
 			Windows.Foundation.Size masterSize = Control.MasterSize;
 			Windows.Foundation.Size detailSize = Control.DetailSize;
 
-			MasterDetailPageController.MasterBounds = new Rectangle(0, 0, masterSize.Width, masterSize.Height);
-			MasterDetailPageController.DetailBounds = new Rectangle(0, 0, detailSize.Width, detailSize.Height);
+			Element.MasterBounds = new Rectangle(0, 0, masterSize.Width, masterSize.Height);
+			Element.DetailBounds = new Rectangle(0, 0, detailSize.Width, detailSize.Height);
 		}
 
 		void UpdateDetail()
@@ -261,6 +262,8 @@ namespace Xamarin.Forms.Platform.UWP
 
 				IVisualElementRenderer renderer = _detail.GetOrCreateRenderer();
 				element = renderer.ContainerElement;
+
+				UpdateToolbarVisibilty();
 			}
 
 			Control.Detail = element;
@@ -276,8 +279,18 @@ namespace Xamarin.Forms.Platform.UWP
 			(this as ITitleProvider).ShowTitle = !string.IsNullOrEmpty(Control.DetailTitle);
 		}
 
+		void UpdateFlowDirection()
+		{
+			Control.UpdateFlowDirection(Element);
+		}
+
 		void UpdateIsPresented()
 		{
+			// Ignore the IsPresented value being set to false for Split mode on desktop and allow the master
+			// view to be made initially visible
+			if (Device.Idiom == TargetIdiom.Desktop && Control.IsPaneOpen && Element.MasterBehavior != MasterBehavior.Popover)
+				return;
+
 			Control.IsPaneOpen = Element.IsPresented;
 		}
 
@@ -297,20 +310,27 @@ namespace Xamarin.Forms.Platform.UWP
 
 			Control.Master = element;
 			Control.MasterTitle = _master?.Title;
+
+			UpdateToolbarVisibilty();
 		}
 
 		void UpdateMode()
 		{
+			UpdateDetailTitle();
 			Control.CollapseStyle = Element.OnThisPlatform().GetCollapseStyle();
 			Control.CollapsedPaneWidth = Element.OnThisPlatform().CollapsedPaneWidth();
-			Control.ShouldShowSplitMode = MasterDetailPageController.ShouldShowSplitMode;
+			Control.ShouldShowSplitMode = Element.ShouldShowSplitMode;
 		}
 
-#if WINDOWS_UWP
-
-        void UpdateToolbarPlacement()
+		void UpdateToolbarPlacement()
 		{
 			Control.ToolbarPlacement = Element.OnThisPlatform().GetToolbarPlacement();
+		}
+
+		void UpdateToolbarVisibilty()
+		{
+			// Enforce consistency rules on toolbar
+			Control.ShouldShowToolbar = _detail is NavigationPage || _master is NavigationPage;
 		}
 
 		public void BindForegroundColor(AppBar appBar)
@@ -328,6 +348,5 @@ namespace Xamarin.Forms.Platform.UWP
 			element.SetBinding(Windows.UI.Xaml.Controls.Control.ForegroundProperty,
 				new Windows.UI.Xaml.Data.Binding { Path = new PropertyPath("Control.ToolbarForeground"), Source = this, RelativeSource = new RelativeSource { Mode = RelativeSourceMode.TemplatedParent } });
 		}
-#endif
 	}
 }

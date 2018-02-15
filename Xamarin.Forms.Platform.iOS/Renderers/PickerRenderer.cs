@@ -1,21 +1,9 @@
 using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Drawing;
-#if __UNIFIED__
 using UIKit;
-#else
-using MonoTouch.UIKit;
-#endif
-#if __UNIFIED__
+using Xamarin.Forms.PlatformConfiguration.iOSSpecific;
 using RectangleF = CoreGraphics.CGRect;
-using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -23,13 +11,15 @@ namespace Xamarin.Forms.Platform.iOS
 	{
 		UIPickerView _picker;
 		UIColor _defaultTextColor;
+		bool _disposed;
+		bool _useLegacyColorManagement;
 
 		IElementController ElementController => Element as IElementController;
 
 		protected override void OnElementChanged(ElementChangedEventArgs<Picker> e)
 		{
 			if (e.OldElement != null)
-				((ObservableList<string>)e.OldElement.Items).CollectionChanged -= RowsCollectionChanged;
+				((INotifyCollectionChanged)e.OldElement.Items).CollectionChanged -= RowsCollectionChanged;
 
 			if (e.NewElement != null)
 			{
@@ -37,8 +27,9 @@ namespace Xamarin.Forms.Platform.iOS
 				{
 					var entry = new NoCaretField { BorderStyle = UITextBorderStyle.RoundedRect };
 
-					entry.Started += OnStarted;
-					entry.Ended += OnEnded;
+					entry.EditingDidBegin += OnStarted;
+					entry.EditingDidEnd += OnEnded;
+					entry.EditingChanged += OnEditing;
 
 					_picker = new UIPickerView();
 
@@ -59,17 +50,23 @@ namespace Xamarin.Forms.Platform.iOS
 					entry.InputView = _picker;
 					entry.InputAccessoryView = toolbar;
 
+					entry.InputView.AutoresizingMask = UIViewAutoresizing.FlexibleHeight;
+					entry.InputAccessoryView.AutoresizingMask = UIViewAutoresizing.FlexibleHeight;
+
 					_defaultTextColor = entry.TextColor;
+					
+					_useLegacyColorManagement = e.NewElement.UseLegacyColorManagement();
 
 					SetNativeControl(entry);
 				}
 
 				_picker.Model = new PickerSource(this);
 
+				UpdateFont();
 				UpdatePicker();
 				UpdateTextColor();
 
-				((ObservableList<string>)e.NewElement.Items).CollectionChanged += RowsCollectionChanged;
+				((INotifyCollectionChanged)e.NewElement.Items).CollectionChanged += RowsCollectionChanged;
 			}
 
 			base.OnElementChanged(e);
@@ -80,14 +77,31 @@ namespace Xamarin.Forms.Platform.iOS
 			base.OnElementPropertyChanged(sender, e);
 			if (e.PropertyName == Picker.TitleProperty.PropertyName)
 				UpdatePicker();
-			if (e.PropertyName == Picker.SelectedIndexProperty.PropertyName)
+			else if (e.PropertyName == Picker.SelectedIndexProperty.PropertyName)
 				UpdatePicker();
-			if (e.PropertyName == Picker.TextColorProperty.PropertyName || e.PropertyName == VisualElement.IsEnabledProperty.PropertyName)
+			else if (e.PropertyName == Picker.TextColorProperty.PropertyName || e.PropertyName == VisualElement.IsEnabledProperty.PropertyName)
 				UpdateTextColor();
+			else if (e.PropertyName == Picker.FontAttributesProperty.PropertyName || e.PropertyName == Picker.FontFamilyProperty.PropertyName || e.PropertyName == Picker.FontSizeProperty.PropertyName)
+				UpdateFont();
+		}
+
+		void OnEditing(object sender, EventArgs eventArgs)
+		{
+			// Reset the TextField's Text so it appears as if typing with a keyboard does not work.
+			var selectedIndex = Element.SelectedIndex;
+			var items = Element.Items;
+			Control.Text = selectedIndex == -1 || items == null ? "" : items[selectedIndex];
 		}
 
 		void OnEnded(object sender, EventArgs eventArgs)
 		{
+			var s = (PickerSource)_picker.Model;
+			if (s.SelectedIndex == -1)
+				return;
+			if (s.SelectedIndex != _picker.SelectedRowInComponent(0))
+			{
+				_picker.Select(s.SelectedIndex, 0, false);
+			}
 			ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
 		}
 
@@ -99,6 +113,11 @@ namespace Xamarin.Forms.Platform.iOS
 		void RowsCollectionChanged(object sender, EventArgs e)
 		{
 			UpdatePicker();
+		}
+
+		void UpdateFont()
+		{
+			Control.Font = Element.ToUIFont();
 		}
 
 		void UpdatePicker()
@@ -121,9 +140,9 @@ namespace Xamarin.Forms.Platform.iOS
 			if (Element != null)
 			{
 				var oldText = Control.Text;
-				ElementController.SetValueFromRenderer(Picker.SelectedIndexProperty, s.SelectedIndex);
 				Control.Text = s.SelectedItem;
 				UpdatePickerNativeSize(oldText);
+				ElementController.SetValueFromRenderer(Picker.SelectedIndexProperty, s.SelectedIndex);
 			}
 		}
 
@@ -145,19 +164,61 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			var textColor = Element.TextColor;
 
-			if (textColor.IsDefault || !Element.IsEnabled)
+			if (textColor.IsDefault || (!Element.IsEnabled && _useLegacyColorManagement))
 				Control.TextColor = _defaultTextColor;
 			else
 				Control.TextColor = textColor.ToUIColor();
+
+			// HACK This forces the color to update; there's probably a more elegant way to make this happen
+			Control.Text = Control.Text;
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (_disposed)
+				return;
+
+			_disposed = true;
+
+			if (disposing)
+			{
+				_defaultTextColor = null;
+
+				if (_picker != null)
+				{
+					if (_picker.Model != null)
+					{
+						_picker.Model.Dispose();
+						_picker.Model = null;
+					}
+
+					_picker.RemoveFromSuperview();
+					_picker.Dispose();
+					_picker = null;
+				}
+
+				if (Control != null)
+				{
+					Control.EditingDidBegin -= OnStarted;
+					Control.EditingDidEnd -= OnEnded;
+					Control.EditingChanged -= OnEditing;
+				}
+
+				if(Element != null)
+					((INotifyCollectionChanged)Element.Items).CollectionChanged -= RowsCollectionChanged;
+			}
+
+			base.Dispose(disposing);
 		}
 
 		class PickerSource : UIPickerViewModel
 		{
-			readonly PickerRenderer _renderer;
+			PickerRenderer _renderer;
+			bool _disposed;
 
-			public PickerSource(PickerRenderer model)
+			public PickerSource(PickerRenderer renderer)
 			{
-				_renderer = model;
+				_renderer = renderer;
 			}
 
 			public int SelectedIndex { get; internal set; }
@@ -191,7 +252,22 @@ namespace Xamarin.Forms.Platform.iOS
 					SelectedItem = _renderer.Element.Items[(int)row];
 					SelectedIndex = (int)row;
 				}
-				_renderer.UpdatePickerFromModel(this);
+
+				if(_renderer.Element.On<PlatformConfiguration.iOS>().UpdateMode() == UpdateMode.Immediately)
+					_renderer.UpdatePickerFromModel(this);
+			}
+
+			protected override void Dispose(bool disposing)
+			{
+				if (_disposed)
+					return;
+
+				_disposed = true;
+
+				if (disposing)
+					_renderer = null;
+
+				base.Dispose(disposing);
 			}
 		}
 	}

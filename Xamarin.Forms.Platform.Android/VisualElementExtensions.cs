@@ -1,42 +1,26 @@
+using System;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
+
 namespace Xamarin.Forms.Platform.Android
 {
 	public static class VisualElementExtensions
 	{
-		public static bool ShouldBeMadeClickable(this View view)
+		public static IVisualElementRenderer GetRenderer(this VisualElement self)
 		{
-			var shouldBeClickable = false;
-			for (var i = 0; i < view.GestureRecognizers.Count; i++)
-			{
-				IGestureRecognizer gesture = view.GestureRecognizers[i];
-				if (gesture is TapGestureRecognizer || gesture is PinchGestureRecognizer || gesture is PanGestureRecognizer)
-				{
-					shouldBeClickable = true;
-					break;
-				}
-			}
+			if (self == null)
+				throw new ArgumentNullException(nameof(self));
 
-			// do some evil
-			// This is required so that a layout only absorbs click events if it is not fully transparent
-			// However this is not desirable behavior in a ViewCell because it prevents the ViewCell from activating
-			if (view is Layout && view.BackgroundColor != Color.Transparent && view.BackgroundColor != Color.Default)
-			{
-				Element parent = view.RealParent;
-				var skip = false;
-				while (parent != null)
-				{
-					if (parent is ViewCell)
-					{
-						skip = true;
-						break;
-					}
-					parent = parent.RealParent;
-				}
+			IVisualElementRenderer renderer = Platform.GetRenderer(self);
 
-				if (!skip)
-					shouldBeClickable = true;
-			}
+			return renderer;
+		}
 
-			return shouldBeClickable;
+		internal static bool UseLegacyColorManagement<T>(this T element) where T : VisualElement, IElementConfiguration<T>
+		{
+			// Determine whether we're letting the VSM handle the colors or doing it the old way
+			// or disabling the legacy color management and doing it the old-old (pre 2.0) way
+			return !element.HasVisualStateGroups()
+					&& element.OnThisPlatform().GetIsLegacyColorModeEnabled();
 		}
 	}
 }

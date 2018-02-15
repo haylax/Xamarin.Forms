@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Android.App;
+using Android.Content;
 using Android.Support.V4.Widget;
 using Android.Views;
 using AView = Android.Views.View;
@@ -20,6 +21,11 @@ namespace Xamarin.Forms.Platform.Android
 		MasterDetailPage _page;
 		bool _presented;
 
+		public MasterDetailRenderer(Context context) : base(context)
+		{
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use MasterDetailRenderer(Context) instead.")]
 		public MasterDetailRenderer() : base(Forms.Context)
 		{
 		}
@@ -72,6 +78,13 @@ namespace Xamarin.Forms.Platform.Android
 		}
 
 		public event EventHandler<VisualElementChangedEventArgs> ElementChanged;
+
+		event EventHandler<PropertyChangedEventArgs> ElementPropertyChanged;
+		event EventHandler<PropertyChangedEventArgs> IVisualElementRenderer.ElementPropertyChanged
+		{
+			add { ElementPropertyChanged += value; }
+			remove { ElementPropertyChanged -= value; }
+		}
 
 		public SizeRequest GetDesiredSize(int widthConstraint, int heightConstraint)
 		{
@@ -142,10 +155,8 @@ namespace Xamarin.Forms.Platform.Android
 				Tracker.UpdateLayout();
 		}
 
-		public ViewGroup ViewGroup
-		{
-			get { return this; }
-		}
+		public ViewGroup ViewGroup => this;
+		AView IVisualElementRenderer.View => this;
 
 		protected override void Dispose(bool disposing)
 		{
@@ -237,6 +248,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
+			ElementPropertyChanged?.Invoke(this, e);
 			if (e.PropertyName == "Master")
 				UpdateMaster();
 			else if (e.PropertyName == "Detail")
@@ -287,6 +299,10 @@ namespace Xamarin.Forms.Platform.Android
 			SetDrawerLockMode(_page.IsGestureEnabled ? LockModeUnlocked : LockModeLockedClosed);
 		}
 
+		void IVisualElementRenderer.SetLabelFor(int? id)
+		{
+		}
+
 		void SetLockMode(int lockMode)
 		{
 			if (_currentLockMode != lockMode)
@@ -305,7 +321,7 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateBackgroundImage(Page view)
 		{
 			if (!string.IsNullOrEmpty(view.BackgroundImage))
-				this.SetBackground(Context.Resources.GetDrawable(view.BackgroundImage));
+				this.SetBackground(Context.GetDrawable(view.BackgroundImage));
 		}
 
 		void UpdateDetail()

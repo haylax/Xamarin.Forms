@@ -4,11 +4,13 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms
 {
-	public abstract class Cell : Element, ICellController
+	public abstract class Cell : Element, ICellController, IFlowDirectionController
 	{
+		public const int DefaultCellHeight = 40;
 		public static readonly BindableProperty IsEnabledProperty = BindableProperty.Create("IsEnabled", typeof(bool), typeof(Cell), true, propertyChanged: OnIsEnabledPropertyChanged);
 
 		ObservableCollection<MenuItem> _contextActions;
@@ -16,6 +18,25 @@ namespace Xamarin.Forms
 		double _height = -1;
 
 		bool _nextCallToForceUpdateSizeQueued;
+
+		EffectiveFlowDirection _effectiveFlowDirection = default(EffectiveFlowDirection);
+		EffectiveFlowDirection IFlowDirectionController.EffectiveFlowDirection
+		{
+			get { return _effectiveFlowDirection; }
+			set
+			{
+				if (value == _effectiveFlowDirection)
+					return;
+
+				_effectiveFlowDirection = value;
+
+				var ve = (Parent as VisualElement);
+				ve?.InvalidateMeasureInternal(InvalidationTrigger.Undefined);
+				OnPropertyChanged(VisualElement.FlowDirectionProperty.PropertyName);
+			}
+		}
+
+		IFlowDirectionController FlowController => this;
 
 		public IList<MenuItem> ContextActions
 		{
@@ -70,20 +91,18 @@ namespace Xamarin.Forms
 				if (list != null)
 					return list.HasUnevenRows && Height > 0 ? Height : list.RowHeight;
 
-				return 40;
+				return DefaultCellHeight;
 			}
 		}
+
+		double IFlowDirectionController.Width => (Parent as VisualElement)?.Width ?? 0;
 
 		public event EventHandler Appearing;
 
 		public event EventHandler Disappearing;
 
-		event EventHandler ForceUpdateSizeRequested;
-		event EventHandler ICellController.ForceUpdateSizeRequested
-		{
-			add { ForceUpdateSizeRequested += value; }
-			remove { ForceUpdateSizeRequested -= value; }
-		}
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public event EventHandler ForceUpdateSizeRequested;
 
 		public void ForceUpdateSize()
 		{
@@ -139,6 +158,8 @@ namespace Xamarin.Forms
 			}
 
 			base.OnParentSet();
+
+			FlowController.NotifyFlowDirectionChanged();
 		}
 
 		protected override void OnPropertyChanging(string propertyName = null)
@@ -150,27 +171,44 @@ namespace Xamarin.Forms
 					RealParent.PropertyChanged -= OnParentPropertyChanged;
 					RealParent.PropertyChanging -= OnParentPropertyChanging;
 				}
+
+				FlowController.NotifyFlowDirectionChanged();
 			}
 
 			base.OnPropertyChanging(propertyName);
 		}
 
-		void ICellController.SendAppearing()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SendAppearing()
 		{
 			OnAppearing();
 
-			var container = RealParent as IListViewController;
+			var container = RealParent as ListView;
 			if (container != null)
 				container.SendCellAppearing(this);
 		}
 
-		void ICellController.SendDisappearing()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SendDisappearing()
 		{
 			OnDisappearing();
 
-			var container = RealParent as IListViewController;
+			var container = RealParent as ListView;
 			if (container != null)
 				container.SendCellDisappearing(this);
+		}
+
+		void IFlowDirectionController.NotifyFlowDirectionChanged()
+		{
+			SetFlowDirectionFromParent(this);
+
+			foreach (var element in LogicalChildren)
+			{
+				var view = element as IFlowDirectionController;
+				if (view == null)
+					continue;
+				view.NotifyFlowDirectionChanged();
+			}
 		}
 
 		void OnContextActionsChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -203,6 +241,8 @@ namespace Xamarin.Forms
 			// its uncommon enough that we don't want to take the penalty of N GetValue calls to verify.
 			if (e.PropertyName == "RowHeight")
 				OnPropertyChanged("RenderHeight");
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				FlowController.NotifyFlowDirectionChanged();
 		}
 
 		void OnParentPropertyChanging(object sender, PropertyChangingEventArgs e)

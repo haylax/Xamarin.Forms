@@ -1,17 +1,16 @@
 using System;
-using System.Drawing;
 using System.ComponentModel;
+using System.Drawing;
 using System.Threading;
-#if __UNIFIED__
-using UIKit;
 using CoreAnimation;
-
-#else
-using MonoTouch.UIKit;
-using MonoTouch.CoreAnimation;
-#endif
+using Xamarin.Forms.Internals;
+#if __MOBILE__
 
 namespace Xamarin.Forms.Platform.iOS
+#else
+
+namespace Xamarin.Forms.Platform.MacOS
+#endif
 {
 	public class VisualElementTracker : IDisposable
 	{
@@ -25,7 +24,9 @@ namespace Xamarin.Forms.Platform.iOS
 		// Track these by hand because the calls down into iOS are too expensive
 		bool _isInteractive;
 		Rectangle _lastBounds;
-
+#if !__MOBILE__
+		Rectangle _lastParentBounds;
+#endif
 		CALayer _layer;
 		int _updateCount;
 
@@ -81,7 +82,8 @@ namespace Xamarin.Forms.Platform.iOS
 				e.PropertyName == VisualElement.TranslationXProperty.PropertyName || e.PropertyName == VisualElement.TranslationYProperty.PropertyName || e.PropertyName == VisualElement.ScaleProperty.PropertyName ||
 				e.PropertyName == VisualElement.RotationProperty.PropertyName || e.PropertyName == VisualElement.RotationXProperty.PropertyName || e.PropertyName == VisualElement.RotationYProperty.PropertyName ||
 				e.PropertyName == VisualElement.IsVisibleProperty.PropertyName || e.PropertyName == VisualElement.IsEnabledProperty.PropertyName ||
-				e.PropertyName == VisualElement.InputTransparentProperty.PropertyName || e.PropertyName == VisualElement.OpacityProperty.PropertyName)
+				e.PropertyName == VisualElement.InputTransparentProperty.PropertyName || e.PropertyName == VisualElement.OpacityProperty.PropertyName || 
+				e.PropertyName == Layout.CascadeInputTransparentProperty.PropertyName)
 				UpdateNativeControl(); // poorly optimized
 		}
 
@@ -111,15 +113,37 @@ namespace Xamarin.Forms.Platform.iOS
 			if (view == null || view.Batched)
 				return;
 
-			var shouldInteract = !view.InputTransparent && view.IsEnabled;
+			bool shouldInteract;
+
+			if (view is Layout layout)
+			{
+				if (layout.InputTransparent)
+				{
+					shouldInteract = !layout.CascadeInputTransparent;
+				}
+				else
+				{
+					shouldInteract = layout.IsEnabled;
+				}
+			}
+			else
+			{
+				shouldInteract = !view.InputTransparent && view.IsEnabled;
+			}
+
 			if (_isInteractive != shouldInteract)
 			{
+#if __MOBILE__
 				uiview.UserInteractionEnabled = shouldInteract;
+#endif
 				_isInteractive = shouldInteract;
 			}
 
 			var boundsChanged = _lastBounds != view.Bounds;
-
+#if !__MOBILE__
+			var viewParent = view.RealParent as VisualElement;
+			var parentBoundsChanged = _lastParentBounds != (viewParent == null ? Rectangle.Zero : viewParent.Bounds);
+#endif
 			var thread = !boundsChanged && !caLayer.Frame.IsEmpty;
 
 			var anchorX = (float)view.AnchorX;
@@ -132,8 +156,8 @@ namespace Xamarin.Forms.Platform.iOS
 			var scale = (float)view.Scale;
 			var width = (float)view.Width;
 			var height = (float)view.Height;
-			var x = (float)view.X;
-			var y = (float)view.Y;
+			var x = (float)view.X + (float)CompressedLayout.GetHeadlessOffset(view).X;
+			var y = (float)view.Y + (float)CompressedLayout.GetHeadlessOffset(view).Y;
 			var opacity = (float)view.Opacity;
 			var isVisible = view.IsVisible;
 
@@ -143,13 +167,17 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				if (updateTarget != _updateCount)
 					return;
-
+#if __MOBILE__
 				var visualElement = view;
+#endif
 				var parent = view.RealParent;
 
 				var shouldRelayoutSublayers = false;
 				if (isVisible && caLayer.Hidden)
 				{
+#if !__MOBILE__
+					uiview.Hidden = false;
+#endif
 					caLayer.Hidden = false;
 					if (!caLayer.Frame.IsEmpty)
 						shouldRelayoutSublayers = true;
@@ -157,6 +185,9 @@ namespace Xamarin.Forms.Platform.iOS
 
 				if (!isVisible && !caLayer.Hidden)
 				{
+#if !__MOBILE__
+					uiview.Hidden = true;
+#endif
 					caLayer.Hidden = true;
 					shouldRelayoutSublayers = true;
 				}
@@ -164,11 +195,26 @@ namespace Xamarin.Forms.Platform.iOS
 				// ripe for optimization
 				var transform = CATransform3D.Identity;
 
+#if __MOBILE__
+				bool shouldUpdate = (!(visualElement is Page) || visualElement is ContentPage) && width > 0 && height > 0 && parent != null && boundsChanged;
+#else
+				// We don't care if it's a page or not since bounds of the window can change
+				// TODO: Find why it doesn't work to check if the parentsBounds changed  and remove true;
+				parentBoundsChanged = true;
+				bool shouldUpdate = width > 0 && height > 0 && parent != null && (boundsChanged || parentBoundsChanged);
+#endif
 				// Dont ever attempt to actually change the layout of a Page unless it is a ContentPage
 				// iOS is a really big fan of you not actually modifying the View's of the UIViewControllers
-				if ((!(visualElement is Page) || visualElement is ContentPage) && width > 0 && height > 0 && parent != null && boundsChanged)
+				if (shouldUpdate)
 				{
+#if __MOBILE__
 					var target = new RectangleF(x, y, width, height);
+#else
+					var visualParent = parent as VisualElement;
+					float newY = visualParent == null ? y : Math.Max(0, (float)(visualParent.Height - y - view.Height));
+					var target = new RectangleF(x, newY, width, height);
+#endif
+
 					// must reset transform prior to setting frame...
 					caLayer.Transform = transform;
 					uiview.Frame = target;
@@ -177,11 +223,17 @@ namespace Xamarin.Forms.Platform.iOS
 				}
 				else if (width <= 0 || height <= 0)
 				{
+					//TODO: FInd why it doesn't work
+#if __MOBILE__
 					caLayer.Hidden = true;
+#endif
 					return;
 				}
-
+#if __MOBILE__
 				caLayer.AnchorPoint = new PointF(anchorX, anchorY);
+#else
+				caLayer.AnchorPoint = new PointF(anchorX - 0.5f, anchorY - 0.5f);
+#endif
 				caLayer.Opacity = opacity;
 				const double epsilon = 0.001;
 
@@ -210,12 +262,19 @@ namespace Xamarin.Forms.Platform.iOS
 				caLayer.Transform = transform;
 			};
 
+#if __MOBILE__
 			if (thread)
 				CADisplayLinkTicker.Default.Invoke(update);
 			else
 				update();
+#else
+			update();
+#endif
 
 			_lastBounds = view.Bounds;
+#if !__MOBILE__
+			_lastParentBounds = viewParent?.Bounds ?? Rectangle.Zero;
+#endif
 		}
 
 		void SetElement(VisualElement oldElement, VisualElement newElement)
@@ -241,19 +300,27 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void UpdateNativeControl()
 		{
+			var reference = Guid.NewGuid().ToString();
+			Performance.Start(reference);
+
 			if (_disposed)
 				return;
 
 			if (_layer == null)
 			{
+#if !__MOBILE__
+				Renderer.NativeView.WantsLayer = true;
+#endif
 				_layer = Renderer.NativeView.Layer;
+#if __MOBILE__
 				_isInteractive = Renderer.NativeView.UserInteractionEnabled;
+#endif
 			}
 
 			OnUpdateNativeControl(_layer);
 
-			if (NativeControlUpdated != null)
-				NativeControlUpdated(this, EventArgs.Empty);
+			NativeControlUpdated?.Invoke(this, EventArgs.Empty);
+			Performance.Stop(reference);
 		}
 	}
 }

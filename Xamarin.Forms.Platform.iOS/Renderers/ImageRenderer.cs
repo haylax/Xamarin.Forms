@@ -1,26 +1,12 @@
-using System.Drawing;
+using System;
 using System.ComponentModel;
 using System.IO;
-using System.Threading.Tasks;
 using System.Threading;
-using System;
-#if __UNIFIED__
-using UIKit;
+using System.Threading.Tasks;
 using Foundation;
-#else
-using MonoTouch.UIKit;
-using MonoTouch.Foundation;
-#endif
-#if __UNIFIED__
+using UIKit;
+using Xamarin.Forms.Internals;
 using RectangleF = CoreGraphics.CGRect;
-using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -45,8 +31,6 @@ namespace Xamarin.Forms.Platform.iOS
 	{
 		bool _isDisposed;
 
-		IElementController ElementController => Element as IElementController;
-
 		protected override void Dispose(bool disposing)
 		{
 			if (_isDisposed)
@@ -58,7 +42,6 @@ namespace Xamarin.Forms.Platform.iOS
 				if (Control != null && (oldUIImage = Control.Image) != null)
 				{
 					oldUIImage.Dispose();
-					oldUIImage = null;
 				}
 			}
 
@@ -67,7 +50,7 @@ namespace Xamarin.Forms.Platform.iOS
 			base.Dispose(disposing);
 		}
 
-		protected override void OnElementChanged(ElementChangedEventArgs<Image> e)
+		protected override async void OnElementChanged(ElementChangedEventArgs<Image> e)
 		{
 			if (Control == null)
 			{
@@ -80,18 +63,18 @@ namespace Xamarin.Forms.Platform.iOS
 			if (e.NewElement != null)
 			{
 				SetAspect();
-				SetImage(e.OldElement);
+				await TrySetImage(e.OldElement);
 				SetOpacity();
 			}
 
 			base.OnElementChanged(e);
 		}
 
-		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
+		protected override async void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
 			base.OnElementPropertyChanged(sender, e);
 			if (e.PropertyName == Image.SourceProperty.PropertyName)
-				SetImage();
+				await TrySetImage();
 			else if (e.PropertyName == Image.IsOpaqueProperty.PropertyName)
 				SetOpacity();
 			else if (e.PropertyName == Image.AspectProperty.PropertyName)
@@ -100,11 +83,41 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void SetAspect()
 		{
+			if (_isDisposed || Element == null || Control == null)
+			{
+				return;
+			}
+
 			Control.ContentMode = Element.Aspect.ToUIViewContentMode();
 		}
 
-		async void SetImage(Image oldElement = null)
+		protected virtual async Task TrySetImage(Image previous = null)
 		{
+			// By default we'll just catch and log any exceptions thrown by SetImage so they don't bring down
+			// the application; a custom renderer can override this method and handle exceptions from
+			// SetImage differently if it wants to
+
+			try
+			{
+				await SetImage(previous).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(nameof(ImageRenderer), "Error loading image: {0}", ex);
+			}
+			finally
+			{
+				((IImageController)Element)?.SetIsLoading(false);
+			}
+		}
+
+		protected async Task SetImage(Image oldElement = null)
+		{
+			if (_isDisposed || Element == null || Control == null)
+			{
+				return;
+			}
+
 			var source = Element.Source;
 
 			if (oldElement != null)
@@ -121,9 +134,10 @@ namespace Xamarin.Forms.Platform.iOS
 
 			IImageSourceHandler handler;
 
-			((IImageController)Element).SetIsLoading(true);
+			Element.SetIsLoading(true);
 
-			if (source != null && (handler = Registrar.Registered.GetHandler<IImageSourceHandler>(source.GetType())) != null)
+			if (source != null &&
+			    (handler = Internals.Registrar.Registered.GetHandlerForObject<IImageSourceHandler>(source)) != null)
 			{
 				UIImage uiimage;
 				try
@@ -135,22 +149,30 @@ namespace Xamarin.Forms.Platform.iOS
 					uiimage = null;
 				}
 
+				if (_isDisposed)
+					return;
+
 				var imageView = Control;
 				if (imageView != null)
 					imageView.Image = uiimage;
 
-				if (!_isDisposed)
-					((IVisualElementController)Element).NativeSizeChanged();
+				((IVisualElementController)Element).NativeSizeChanged();
 			}
 			else
+			{
 				Control.Image = null;
+			}
 
-			if (!_isDisposed)
-				((IImageController)Element).SetIsLoading(false);
+			Element.SetIsLoading(false);
 		}
 
 		void SetOpacity()
 		{
+			if (_isDisposed || Element == null || Control == null)
+			{
+				return;
+			}
+
 			Control.Opaque = Element.IsOpaque;
 		}
 	}
@@ -166,12 +188,15 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			UIImage image = null;
 			var filesource = imagesource as FileImageSource;
-			if (filesource != null)
+			var file = filesource?.File;
+			if (!string.IsNullOrEmpty(file))
+				image = File.Exists(file) ? new UIImage(file) : UIImage.FromBundle(file);
+
+			if (image == null)
 			{
-				var file = filesource.File;
-				if (!string.IsNullOrEmpty(file))
-					image = File.Exists(file) ? new UIImage(file) : UIImage.FromBundle(file);
+				Log.Warning(nameof(FileImageSourceHandler), "Could not find image: {0}", imagesource);
 			}
+
 			return Task.FromResult(image);
 		}
 	}
@@ -180,9 +205,9 @@ namespace Xamarin.Forms.Platform.iOS
 	{
 		public async Task<UIImage> LoadImageAsync(ImageSource imagesource, CancellationToken cancelationToken = default(CancellationToken), float scale = 1f)
 		{
-			UIImage image = null; 
+			UIImage image = null;
 			var streamsource = imagesource as StreamImageSource;
-			if (streamsource != null && streamsource.Stream != null)
+			if (streamsource?.Stream != null)
 			{
 				using (var streamImage = await ((IStreamImageSource)streamsource).GetStreamAsync(cancelationToken).ConfigureAwait(false))
 				{
@@ -190,6 +215,12 @@ namespace Xamarin.Forms.Platform.iOS
 						image = UIImage.LoadFromData(NSData.FromStream(streamImage), scale);
 				}
 			}
+
+			if (image == null)
+			{
+				Log.Warning(nameof(StreamImagesourceHandler), "Could not load image: {0}", streamsource);
+			}
+
 			return image;
 		}
 	}
@@ -200,7 +231,7 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			UIImage image = null;
 			var imageLoader = imagesource as UriImageSource;
-			if (imageLoader != null && imageLoader.Uri != null)
+			if (imageLoader?.Uri != null)
 			{
 				using (var streamImage = await imageLoader.GetStreamAsync(cancelationToken).ConfigureAwait(false))
 				{
@@ -208,6 +239,12 @@ namespace Xamarin.Forms.Platform.iOS
 						image = UIImage.LoadFromData(NSData.FromStream(streamImage), scale);
 				}
 			}
+
+			if (image == null)
+			{
+				Log.Warning(nameof(ImageLoaderSourceHandler), "Could not load image: {0}", imageLoader);
+			}
+
 			return image;
 		}
 	}

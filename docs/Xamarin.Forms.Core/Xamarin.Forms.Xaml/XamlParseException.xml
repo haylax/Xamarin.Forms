@@ -23,16 +23,35 @@
       <MemberType>Constructor</MemberType>
       <AssemblyInfo>
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <Parameters>
         <Parameter Name="message" Type="System.String" />
         <Parameter Name="xmlInfo" Type="System.Xml.IXmlLineInfo" />
       </Parameters>
       <Docs>
-        <param name="message">To be added.</param>
-        <param name="xmlInfo">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="message">For internal use by the XAML engine.</param>
+        <param name="xmlInfo">For internal use by the XAML engine.</param>
+        <summary>For internal use by the XAML engine.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName=".ctor">
+      <MemberSignature Language="C#" Value="public XamlParseException (string message, System.Xml.IXmlLineInfo xmlInfo, Exception innerException = null);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig specialname rtspecialname instance void .ctor(string message, class System.Xml.IXmlLineInfo xmlInfo, class System.Exception innerException) cil managed" />
+      <MemberType>Constructor</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Parameters>
+        <Parameter Name="message" Type="System.String" />
+        <Parameter Name="xmlInfo" Type="System.Xml.IXmlLineInfo" />
+        <Parameter Name="innerException" Type="System.Exception" />
+      </Parameters>
+      <Docs>
+        <param name="message">For internal use by the XAML engine.</param>
+        <param name="xmlInfo">For internal use by the XAML engine.</param>
+        <param name="innerException">For internal use by the XAML engine.</param>
+        <summary>For internal use by the XAML engine.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>

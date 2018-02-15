@@ -5,17 +5,11 @@ namespace Xamarin.Forms.Xaml
 {
 	class PruneIgnoredNodesVisitor : IXamlNodeVisitor
 	{
-		public bool StopOnDataTemplate {
-			get { return false; }
-		}
-
-		public bool StopOnResourceDictionary {
-			get { return false; }
-		}
-
-		public bool VisitChildrenFirst {
-			get { return false; }
-		}
+		public TreeVisitingMode VisitingMode => TreeVisitingMode.TopDown;
+		public bool StopOnDataTemplate => false;
+		public bool StopOnResourceDictionary => false;
+		public bool VisitNodeOnDataTemplate => true;
+		public bool SkipChildren(INode node, INode parentNode) => false;
 
 		public void Visit(ElementNode node, INode parentNode)
 		{
@@ -25,8 +19,7 @@ namespace Xamarin.Forms.Xaml
 				var propertyValue = (propertyKvp.Value as ValueNode)?.Value as string;
 				if (propertyValue == null)
 					continue;
-				if (propertyName.NamespaceURI != "http://schemas.openxmlformats.org/markup-compatibility/2006" ||
-					propertyName.LocalName != "Ignorable")
+				if (!propertyName.Equals(XamlParser.McUri, "Ignorable"))
 					continue;
 				(parentNode.IgnorablePrefixes ?? (parentNode.IgnorablePrefixes = new List<string>())).AddRange(propertyValue.Split(','));
 			}

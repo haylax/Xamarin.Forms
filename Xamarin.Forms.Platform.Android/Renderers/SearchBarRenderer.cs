@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
+using Android.Content;
 using Android.Content.Res;
 using Android.Graphics;
 using Android.OS;
@@ -14,10 +15,16 @@ namespace Xamarin.Forms.Platform.Android
 	public class SearchBarRenderer : ViewRenderer<SearchBar, SearchView>, SearchView.IOnQueryTextListener
 	{
 		EditText _editText;
-		ColorStateList _hintTextColorDefault;
 		InputTypes _inputType;
-		ColorStateList _textColorDefault;
+		TextColorSwitcher _textColorSwitcher;
+		TextColorSwitcher _hintColorSwitcher;
 
+		public SearchBarRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use SearchBarRenderer(Context) instead.")]
 		public SearchBarRenderer()
 		{
 			AutoPackage = false;
@@ -33,7 +40,7 @@ namespace Xamarin.Forms.Platform.Android
 		bool SearchView.IOnQueryTextListener.OnQueryTextSubmit(string query)
 		{
 			((ISearchBarController)Element).OnSearchButtonPressed();
-			Control.ClearFocus();
+			ClearFocus(Control);
 			return true;
 		}
 
@@ -56,6 +63,15 @@ namespace Xamarin.Forms.Platform.Android
 				searchView.SetIconifiedByDefault(false);
 				searchView.Iconified = false;
 				SetNativeControl(searchView);
+				_editText = _editText ?? Control.GetChildrenOfType<EditText>().FirstOrDefault();
+
+				if (_editText != null)
+				{
+					var useLegacyColorManagement = e.NewElement.UseLegacyColorManagement();
+					_textColorSwitcher = new TextColorSwitcher(_editText.TextColors, useLegacyColorManagement);
+					_hintColorSwitcher = new TextColorSwitcher(_editText.HintTextColors, useLegacyColorManagement);
+				}
+
 			}
 
 			BuildVersionCodes androidVersion = Build.VERSION.SdkInt;
@@ -67,7 +83,7 @@ namespace Xamarin.Forms.Platform.Android
 				_inputType = InputTypes.ClassText | InputTypes.TextFlagAutoComplete | InputTypes.TextFlagNoSuggestions;
 			}
 
-			searchView.ClearFocus();
+			ClearFocus(searchView);
 			UpdatePlaceholder();
 			UpdateText();
 			UpdateEnabled();
@@ -108,12 +124,14 @@ namespace Xamarin.Forms.Platform.Android
 				UpdateTextColor();
 			else if (e.PropertyName == SearchBar.PlaceholderColorProperty.PropertyName)
 				UpdatePlaceholderColor();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateAlignment();
 		}
 
 		internal override void OnNativeFocusChanged(bool hasFocus)
 		{
 			if (hasFocus && !Element.IsEnabled)
-				Control.ClearFocus();
+				ClearFocus(Control);
 		}
 
 		void UpdateAlignment()
@@ -123,7 +141,7 @@ namespace Xamarin.Forms.Platform.Android
 			if (_editText == null)
 				return;
 
-			_editText.Gravity = Element.HorizontalTextAlignment.ToHorizontalGravityFlags() | Xamarin.Forms.TextAlignment.Center.ToVerticalGravityFlags();
+			_editText.UpdateHorizontalAlignment(Element.HorizontalTextAlignment);
 		}
 
 		void UpdateCancelButtonColor()
@@ -148,12 +166,29 @@ namespace Xamarin.Forms.Platform.Android
 			SearchView control = Control;
 			if (!model.IsEnabled)
 			{
-				control.ClearFocus();
+				ClearFocus(control);
 				// removes cursor in SearchView
 				control.SetInputType(InputTypes.Null);
 			}
 			else
 				control.SetInputType(_inputType);
+
+			if (_editText != null)
+			{
+				_editText.Enabled = model.IsEnabled;
+			}
+		}
+
+		void ClearFocus(SearchView view)
+		{
+			try
+			{
+				view.ClearFocus();
+			}
+			catch (Java.Lang.UnsupportedOperationException)
+			{
+				// silently catch these as they happen in the previewer due to some bugs in upstread android
+			}
 		}
 
 		void UpdateFont()
@@ -174,32 +209,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		void UpdatePlaceholderColor()
 		{
-			_editText = _editText ?? Control.GetChildrenOfType<EditText>().FirstOrDefault();
-
-			if (_editText == null)
-				return;
-
-			Color placeholderColor = Element.PlaceholderColor;
-
-			if (placeholderColor.IsDefault)
-			{
-				if (_hintTextColorDefault == null)
-				{
-					// This control has always had the default colors; nothing to update
-					return;
-				}
-
-				// This control is being set back to the default colors
-				_editText.SetHintTextColor(_hintTextColorDefault);
-			}
-			else
-			{
-				// Keep track of the default colors so we can return to them later
-				// and so we can preserve the default disabled color
-				_hintTextColorDefault = _hintTextColorDefault ?? _editText.HintTextColors;
-
-				_editText.SetHintTextColor(placeholderColor.ToAndroidPreserveDisabled(_hintTextColorDefault));
-			}
+			_hintColorSwitcher?.UpdateTextColor(_editText, Element.PlaceholderColor, _editText.SetHintTextColor);
 		}
 
 		void UpdateText()
@@ -211,32 +221,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		void UpdateTextColor()
 		{
-			_editText = _editText ?? Control.GetChildrenOfType<EditText>().FirstOrDefault();
-
-			if (_editText == null)
-				return;
-
-			Color textColor = Element.TextColor;
-
-			if (textColor.IsDefault)
-			{
-				if (_textColorDefault == null)
-				{
-					// This control has always had the default colors; nothing to update
-					return;
-				}
-
-				// This control is being set back to the default colors
-				_editText.SetTextColor(_textColorDefault);
-			}
-			else
-			{
-				// Keep track of the default colors so we can return to them later
-				// and so we can preserve the default disabled color
-				_textColorDefault = _textColorDefault ?? _editText.TextColors;
-
-				_editText.SetTextColor(textColor.ToAndroidPreserveDisabled(_textColorDefault));
-			}
+			_textColorSwitcher?.UpdateTextColor(_editText, Element.TextColor);
 		}
 	}
 }

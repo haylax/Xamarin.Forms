@@ -1,16 +1,16 @@
 using System;
-#if __UNIFIED__
-using UIKit;
-
+#if __MOBILE__
+using TNativeView = UIKit.UIView;
 #else
-using MonoTouch.UIKit;
+using TNativeView = AppKit.NSView;
+
 #endif
 
 namespace Xamarin.Forms
 {
 	public class ViewInitializedEventArgs : EventArgs
 	{
-		public UIView NativeView { get; internal set; }
+		public TNativeView NativeView { get; internal set; }
 
 		public VisualElement View { get; internal set; }
 	}

@@ -1,10 +1,21 @@
+using System;
 using System.ComponentModel;
+using Android.Content;
 using Android.Views;
 
 namespace Xamarin.Forms.Platform.Android
 {
 	public class PageRenderer : VisualElementRenderer<Page>
 	{
+		public PageRenderer(Context context) : base(context)
+		{
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use PageRenderer(Context) instead.")]
+		public PageRenderer()
+		{
+		}
+
 		public override bool OnTouchEvent(MotionEvent e)
 		{
 			base.OnTouchEvent(e);
@@ -13,6 +24,8 @@ namespace Xamarin.Forms.Platform.Android
 		}
 
 		IPageController PageController => Element as IPageController;
+
+		double _previousHeight;
 
 		protected override void Dispose(bool disposing)
 		{
@@ -24,7 +37,7 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			base.OnAttachedToWindow();
 			var pageContainer = Parent as PageContainer;
-			if (pageContainer != null && pageContainer.IsInFragment)
+			if (pageContainer != null && (pageContainer.IsInFragment || pageContainer.Visibility == ViewStates.Gone))
 				return;
 			PageController.SendAppearing();
 		}
@@ -43,6 +56,11 @@ namespace Xamarin.Forms.Platform.Android
 			Page view = e.NewElement;
 			base.OnElementChanged(e);
 
+			if (Id == NoId)
+			{
+				Id = Platform.GenerateViewId();
+			}
+
 			UpdateBackgroundColor(view);
 			UpdateBackgroundImage(view);
 
@@ -54,8 +72,36 @@ namespace Xamarin.Forms.Platform.Android
 			base.OnElementPropertyChanged(sender, e);
 			if (e.PropertyName == Page.BackgroundImageProperty.PropertyName)
 				UpdateBackgroundImage(Element);
-			if (e.PropertyName == VisualElement.BackgroundColorProperty.PropertyName)
+			else if (e.PropertyName == VisualElement.BackgroundColorProperty.PropertyName)
 				UpdateBackgroundColor(Element);
+			else if (e.PropertyName == VisualElement.HeightProperty.PropertyName)
+				UpdateHeight();
+		}
+
+		void UpdateHeight()
+		{
+			// Handle size changes because of the soft keyboard (there's probably a more elegant solution to this)
+
+			// This is only necessary if:
+			// - we're navigating back from a page where the soft keyboard was open when the user hit the Navigation Bar 'back' button
+			// - the Application's content height has changed because WindowSoftInputModeAdjust was set to Resize
+			// - the height has increased (in other words, the last layout was with the keyboard open, and now it's closed)
+			var newHeight = Element.Height;
+
+			if (_previousHeight > 0 && newHeight > _previousHeight)
+			{
+				var nav = Element.Navigation;
+
+				// This update check will fire for all the pages on the stack, but we only need to request a layout for the top one
+				if (nav?.NavigationStack != null && nav.NavigationStack.Count > 0 && Element == nav.NavigationStack[nav.NavigationStack.Count - 1])
+				{
+					// The Forms layout stuff is already correct, we just need to force Android to catch up
+					RequestLayout();
+				}
+			}
+
+			// Cache the height for next time
+			_previousHeight = newHeight;
 		}
 
 		void UpdateBackgroundColor(Page view)
@@ -67,7 +113,7 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateBackgroundImage(Page view)
 		{
 			if (!string.IsNullOrEmpty(view.BackgroundImage))
-				this.SetBackground(Context.Resources.GetDrawable(view.BackgroundImage));
+				this.SetBackground(Context.GetDrawable(view.BackgroundImage));
 		}
 	}
 }

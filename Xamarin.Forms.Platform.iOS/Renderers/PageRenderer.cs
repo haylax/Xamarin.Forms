@@ -1,13 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-#if __UNIFIED__
+using Xamarin.Forms.Internals;
 using UIKit;
-
-#else
-using MonoTouch.UIKit;
-
-#endif
+using PageUIStatusBarAnimation = Xamarin.Forms.PlatformConfiguration.iOSSpecific.UIStatusBarAnimation;
+using Xamarin.Forms.PlatformConfiguration.iOSSpecific;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -19,19 +16,15 @@ namespace Xamarin.Forms.Platform.iOS
 		VisualElementPackager _packager;
 		VisualElementTracker _tracker;
 
-		IPageController PageController => Element as IPageController;
+		Page Page => Element as Page;
 
 		public PageRenderer()
 		{
-			if (!Forms.IsiOS7OrNewer)
-				WantsFullScreenLayout = true;
 		}
 
 		void IEffectControlProvider.RegisterEffect(Effect effect)
 		{
-			var platformEffect = effect as PlatformEffect;
-			if (platformEffect != null)
-				platformEffect.Container = View;
+			VisualElementRenderer<VisualElement>.RegisterEffect(effect, View);
 		}
 
 		public VisualElement Element { get; private set; }
@@ -70,6 +63,23 @@ namespace Xamarin.Forms.Platform.iOS
 			Element.Layout(new Rectangle(Element.X, Element.Y, size.Width, size.Height));
 		}
 
+		public override void ViewSafeAreaInsetsDidChange()
+		{
+
+			var page = (Element as Page);
+			if (page != null && Forms.IsiOS11OrNewer)
+			{
+				var insets = NativeView.SafeAreaInsets;
+				if(page.Parent is TabbedPage)
+				{
+					insets.Bottom = 0;
+				}
+				page.On<PlatformConfiguration.iOS>().SetSafeAreaInsets(new Thickness(insets.Left, insets.Top, insets.Right, insets.Bottom));
+			
+			}
+			base.ViewSafeAreaInsetsDidChange();
+		}
+
 		public UIViewController ViewController => _disposed ? null : this;
 
 		public override void ViewDidAppear(bool animated)
@@ -80,7 +90,8 @@ namespace Xamarin.Forms.Platform.iOS
 				return;
 
 			_appeared = true;
-			PageController.SendAppearing();
+			Page.SendAppearing();
+			UpdateStatusBarPrefersHidden();
 		}
 
 		public override void ViewDidDisappear(bool animated)
@@ -91,7 +102,7 @@ namespace Xamarin.Forms.Platform.iOS
 				return;
 
 			_appeared = false;
-			PageController.SendDisappearing();
+			Page.SendDisappearing();
 		}
 
 		public override void ViewDidLoad()
@@ -134,7 +145,7 @@ namespace Xamarin.Forms.Platform.iOS
 				Element.PropertyChanged -= OnHandlePropertyChanged;
 				Platform.SetRenderer(Element, null);
 				if (_appeared)
-					PageController.SendDisappearing();
+					Page.SendDisappearing();
 
 				_appeared = false;
 
@@ -182,6 +193,39 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateBackground();
 			else if (e.PropertyName == Page.TitleProperty.PropertyName)
 				UpdateTitle();
+			else if (e.PropertyName == PlatformConfiguration.iOSSpecific.Page.PrefersStatusBarHiddenProperty.PropertyName)
+				UpdateStatusBarPrefersHidden();
+		}
+
+		public override UIKit.UIStatusBarAnimation PreferredStatusBarUpdateAnimation
+		{
+			get
+			{
+				var animation = ((Page)Element).OnThisPlatform().PreferredStatusBarUpdateAnimation();
+				switch (animation)
+				{
+					case (PageUIStatusBarAnimation.Fade):
+						return UIKit.UIStatusBarAnimation.Fade;
+					case (PageUIStatusBarAnimation.Slide):
+						return UIKit.UIStatusBarAnimation.Slide;
+					case (PageUIStatusBarAnimation.None):
+					default:
+						return UIKit.UIStatusBarAnimation.None;
+				}
+			}
+		}
+
+		void UpdateStatusBarPrefersHidden()
+		{
+			if (Element == null)
+				return;
+
+			var animation = ((Page)Element).OnThisPlatform().PreferredStatusBarUpdateAnimation();
+			if (animation == PageUIStatusBarAnimation.Fade || animation == PageUIStatusBarAnimation.Slide)
+				UIView.Animate(0.25, () => SetNeedsStatusBarAppearanceUpdate());
+			else
+				SetNeedsStatusBarAppearanceUpdate();
+			View.SetNeedsLayout();
 		}
 
 		bool OnShouldReceiveTouch(UIGestureRecognizer recognizer, UITouch touch)
@@ -192,6 +236,21 @@ namespace Xamarin.Forms.Platform.iOS
 					return false;
 			}
 			return true;
+		}
+
+		public override bool PrefersStatusBarHidden()
+		{
+			var mode = ((Page)Element).OnThisPlatform().PrefersStatusBarHidden();
+			switch (mode)
+			{
+				case (StatusBarHiddenMode.True):
+					return true;
+				case (StatusBarHiddenMode.False):
+					return false;
+				case (StatusBarHiddenMode.Default):
+				default:
+					return base.PrefersStatusBarHidden();
+			}
 		}
 
 		void UpdateBackground()

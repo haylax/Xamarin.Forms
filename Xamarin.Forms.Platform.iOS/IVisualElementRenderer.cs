@@ -1,20 +1,24 @@
 using System;
-#if __UNIFIED__
+#if __MOBILE__
 using UIKit;
-
-#else
-using MonoTouch.UIKit;
-#endif
+using NativeView = UIKit.UIView;
+using NativeViewController = UIKit.UIViewController;
 
 namespace Xamarin.Forms.Platform.iOS
+#else
+using NativeView = AppKit.NSView;
+using NativeViewController = AppKit.NSViewController;
+
+namespace Xamarin.Forms.Platform.MacOS
+#endif
 {
 	public interface IVisualElementRenderer : IDisposable, IRegisterable
 	{
 		VisualElement Element { get; }
 
-		UIView NativeView { get; }
+		NativeView NativeView { get; }
 
-		UIViewController ViewController { get; }
+		NativeViewController ViewController { get; }
 
 		event EventHandler<VisualElementChangedEventArgs> ElementChanged;
 

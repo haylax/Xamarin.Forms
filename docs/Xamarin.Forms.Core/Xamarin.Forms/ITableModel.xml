@@ -7,7 +7,7 @@
   </AssemblyInfo>
   <Interfaces />
   <Docs>
-    <summary>To be added.</summary>
+    <summary>This interface is for internal use by platform renderers.</summary>
     <remarks>To be added.</remarks>
   </Docs>
   <Members>
@@ -26,9 +26,9 @@
         <Parameter Name="row" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <param name="row">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <param name="row">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -47,8 +47,8 @@
         <Parameter Name="section" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -68,9 +68,9 @@
         <Parameter Name="row" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <param name="row">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <param name="row">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -89,8 +89,8 @@
         <Parameter Name="section" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -107,7 +107,7 @@
       </ReturnValue>
       <Parameters />
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -124,7 +124,7 @@
       </ReturnValue>
       <Parameters />
       <Docs>
-        <summary>To be added.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -143,8 +143,8 @@
         <Parameter Name="section" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -164,9 +164,9 @@
         <Parameter Name="row" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <param name="row">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <param name="row">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -184,8 +184,8 @@
         <Parameter Name="item" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -204,9 +204,9 @@
         <Parameter Name="row" Type="System.Int32" />
       </Parameters>
       <Docs>
-        <param name="section">To be added.</param>
-        <param name="row">To be added.</param>
-        <summary>To be added.</summary>
+        <param name="section">For internal use by the Xamarin.Forms platform.</param>
+        <param name="row">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>

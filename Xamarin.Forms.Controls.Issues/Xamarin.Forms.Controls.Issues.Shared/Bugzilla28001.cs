@@ -6,7 +6,7 @@ using Xamarin.UITest;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Bugzilla, 28001, "[Android] TabbedPage: invisible tabs are not Disposed", PlatformAffected.Android)]
@@ -23,6 +23,7 @@ namespace Xamarin.Forms.Controls
 
 		protected override void Init ()
 		{
+			s_disposeCount = 0;
 			s_lbl = new Label { AutomationId = "lblDisposedCound" };
 			var tab1 = new DisposePage { Title = "Tab1" }; 
 			var tab2 = new DisposePage { Title = "Tab2" };
@@ -52,7 +53,6 @@ namespace Xamarin.Forms.Controls
 			RunningApp.Tap (q => q.Marked ("Tab1"));
 			RunningApp.Tap (q => q.Marked ("Pop"));
 			RunningApp.WaitForElement (q => q.Marked (string.Format ("Dispose {0} pages", 2)));
-		
 		}
 #endif
 	}

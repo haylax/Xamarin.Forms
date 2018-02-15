@@ -3,8 +3,9 @@ using NUnit.Framework;
 
 namespace Xamarin.Forms.Core.UnitTests
 {
-	internal class MockBehavior<T> : Behavior<T> where T:BindableObject
+	class MockBehavior<T> : Behavior<T> where T:BindableObject
 	{
+		public static int AttachCount { get; set; }
 		public bool attached;
 		public bool detached;
 
@@ -12,11 +13,13 @@ namespace Xamarin.Forms.Core.UnitTests
 		{
 			base.OnAttachedTo (bindable);
 			attached = true;
+			AttachCount++;
 			AssociatedObject = bindable;
 		}
 
 		protected override void OnDetachingFrom (BindableObject bindable)
 		{
+			AttachCount--;
 			detached = true;
 			base.OnDetachingFrom (bindable);
 			AssociatedObject = null;

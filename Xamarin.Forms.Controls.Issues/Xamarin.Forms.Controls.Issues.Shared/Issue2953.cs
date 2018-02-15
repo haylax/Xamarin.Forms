@@ -9,7 +9,7 @@ using Xamarin.UITest;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Github, 2953, "GroupHeaderCells disappear when item is removed from a group in ListView (iOS only) ")]
@@ -88,3 +88,5 @@ namespace Xamarin.Forms.Controls
 #endif
 	}
 }
+
+// Note: this fails on UWP because we can't currently inspect listview headers	

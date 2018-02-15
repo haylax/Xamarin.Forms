@@ -1,27 +1,23 @@
 using System;
-using System.Drawing;
 using System.ComponentModel;
-#if __UNIFIED__
-using UIKit;
-using CoreText;
-#else
-using MonoTouch.UIKit;
-using MonoTouch.CoreText;
-#endif
-#if __UNIFIED__
 using RectangleF = CoreGraphics.CGRect;
 using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
 
+#if __MOBILE__
+using UIKit;
+using NativeLabel = UIKit.UILabel;
 #else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
+using AppKit;
+using NativeLabel = AppKit.NSTextField;
 #endif
 
+#if __MOBILE__
 namespace Xamarin.Forms.Platform.iOS
+#else
+namespace Xamarin.Forms.Platform.MacOS
+#endif
 {
-	public class LabelRenderer : ViewRenderer<Label, UILabel>
+	public class LabelRenderer : ViewRenderer<Label, NativeLabel>
 	{
 		SizeRequest _perfectSize;
 
@@ -36,23 +32,46 @@ namespace Xamarin.Forms.Platform.iOS
 				_perfectSizeValid = true;
 			}
 
-			if (widthConstraint >= _perfectSize.Request.Width && heightConstraint >= _perfectSize.Request.Height)
+			var widthFits = widthConstraint >= _perfectSize.Request.Width;
+			var heightFits = heightConstraint >= _perfectSize.Request.Height;
+
+			if (widthFits && heightFits)
 				return _perfectSize;
 
 			var result = base.GetDesiredSize(widthConstraint, heightConstraint);
-			result.Minimum = new Size(Math.Min(10, result.Request.Width), result.Request.Height);
-			if ((Element.LineBreakMode & (LineBreakMode.TailTruncation | LineBreakMode.HeadTruncation | LineBreakMode.MiddleTruncation)) != 0)
+			var tinyWidth = Math.Min(10, result.Request.Width);
+			result.Minimum = new Size(tinyWidth, result.Request.Height);
+
+			if (widthFits || Element.LineBreakMode == LineBreakMode.NoWrap)
+				return result;
+
+			bool containerIsNotInfinitelyWide = !double.IsInfinity(widthConstraint);
+
+			if (containerIsNotInfinitelyWide)
 			{
-				if (result.Request.Width > widthConstraint)
-					result.Request = new Size(Math.Max(result.Minimum.Width, widthConstraint), result.Request.Height);
+				bool textCouldHaveWrapped = Element.LineBreakMode == LineBreakMode.WordWrap || Element.LineBreakMode == LineBreakMode.CharacterWrap;
+				bool textExceedsContainer = result.Request.Width > widthConstraint;
+
+				if (textExceedsContainer || textCouldHaveWrapped)
+				{
+					var expandedWidth = Math.Max(tinyWidth, widthConstraint);
+					result.Request = new Size(expandedWidth, result.Request.Height);
+				}
 			}
 
 			return result;
 		}
 
+#if __MOBILE__
 		public override void LayoutSubviews()
 		{
 			base.LayoutSubviews();
+#else
+		public override void Layout()
+		{
+			base.Layout();
+#endif
+
 			if (Control == null)
 				return;
 
@@ -66,14 +85,26 @@ namespace Xamarin.Forms.Platform.iOS
 					Control.Frame = new RectangleF(0, 0, (nfloat)Element.Width, labelHeight);
 					break;
 				case TextAlignment.Center:
+
+#if __MOBILE__
 					Control.Frame = new RectangleF(0, 0, (nfloat)Element.Width, (nfloat)Element.Height);
-					break;
-				case TextAlignment.End:
-					nfloat yOffset = 0;
+#else
 					fitSize = Control.SizeThatFits(Element.Bounds.Size.ToSizeF());
 					labelHeight = (nfloat)Math.Min(Bounds.Height, fitSize.Height);
+					var yOffset = (int)(Element.Height / 2 - labelHeight / 2);
+					Control.Frame = new RectangleF(0, 0, (nfloat)Element.Width, (nfloat)Element.Height - yOffset);
+#endif
+					break;
+				case TextAlignment.End:
+					fitSize = Control.SizeThatFits(Element.Bounds.Size.ToSizeF());
+					labelHeight = (nfloat)Math.Min(Bounds.Height, fitSize.Height);
+#if __MOBILE__
+					nfloat yOffset = 0;
 					yOffset = (nfloat)(Element.Height - labelHeight);
 					Control.Frame = new RectangleF(0, yOffset, (nfloat)Element.Width, labelHeight);
+#else
+					Control.Frame = new RectangleF(0, 0, (nfloat)Element.Width, labelHeight);
+#endif
 					break;
 			}
 		}
@@ -84,10 +115,18 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				if (Control == null)
 				{
-					SetNativeControl(new UILabel(RectangleF.Empty) { BackgroundColor = UIColor.Clear });
+					SetNativeControl(new NativeLabel(RectangleF.Empty));
+#if !__MOBILE__
+					Control.Editable = false;
+					Control.Bezeled = false;
+					Control.DrawsBackground = false;
+#endif
 				}
 
 				UpdateText();
+				UpdateTextColor();
+				UpdateFont();
+
 				UpdateLineBreakMode();
 				UpdateAlignment();
 			}
@@ -102,36 +141,67 @@ namespace Xamarin.Forms.Platform.iOS
 			if (e.PropertyName == Label.HorizontalTextAlignmentProperty.PropertyName)
 				UpdateAlignment();
 			else if (e.PropertyName == Label.VerticalTextAlignmentProperty.PropertyName)
-				LayoutSubviews();
+				UpdateLayout();
 			else if (e.PropertyName == Label.TextColorProperty.PropertyName)
-				UpdateText();
+				UpdateTextColor();
 			else if (e.PropertyName == Label.FontProperty.PropertyName)
-				UpdateText();
+				UpdateFont();
 			else if (e.PropertyName == Label.TextProperty.PropertyName)
 				UpdateText();
 			else if (e.PropertyName == Label.FormattedTextProperty.PropertyName)
 				UpdateText();
 			else if (e.PropertyName == Label.LineBreakModeProperty.PropertyName)
 				UpdateLineBreakMode();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateAlignment();
 		}
+
+#if __MOBILE__
+		protected override void SetAccessibilityLabel()
+		{
+			// If we have not specified an AccessibilityLabel and the AccessibiltyLabel is current bound to the Text,
+			// exit this method so we don't set the AccessibilityLabel value and break the binding.
+			// This may pose a problem for users who want to explicitly set the AccessibilityLabel to null, but this
+			// will prevent us from inadvertently breaking UI Tests that are using Query.Marked to get the dynamic Text 
+			// of the Label.
+
+			var elemValue = (string)Element?.GetValue(AutomationProperties.NameProperty);
+			if (string.IsNullOrWhiteSpace(elemValue) && Control?.AccessibilityLabel == Control?.Text)
+				return;
+
+			base.SetAccessibilityLabel();
+		}
+#endif
 
 		protected override void SetBackgroundColor(Color color)
 		{
+#if __MOBILE__
 			if (color == Color.Default)
 				BackgroundColor = UIColor.Clear;
 			else
 				BackgroundColor = color.ToUIColor();
+#else
+			if (color == Color.Default)
+				Layer.BackgroundColor = NSColor.Clear.CGColor;
+			else
+				Layer.BackgroundColor = color.ToCGColor();
+#endif
+
 		}
 
 		void UpdateAlignment()
 		{
-			Control.TextAlignment = Element.HorizontalTextAlignment.ToNativeTextAlignment();
+#if __MOBILE__
+			Control.TextAlignment = Element.HorizontalTextAlignment.ToNativeTextAlignment(((IVisualElementController)Element).EffectiveFlowDirection);
+#else
+			Control.Alignment = Element.HorizontalTextAlignment.ToNativeTextAlignment(((IVisualElementController)Element).EffectiveFlowDirection);
+#endif
 		}
 
 		void UpdateLineBreakMode()
 		{
 			_perfectSizeValid = false;
-
+#if __MOBILE__
 			switch (Element.LineBreakMode)
 			{
 				case LineBreakMode.NoWrap:
@@ -159,25 +229,109 @@ namespace Xamarin.Forms.Platform.iOS
 					Control.Lines = 1;
 					break;
 			}
+#else
+			switch (Element.LineBreakMode)
+			{
+				case LineBreakMode.NoWrap:
+					Control.LineBreakMode = NSLineBreakMode.Clipping;
+					Control.MaximumNumberOfLines = 1;
+					break;
+				case LineBreakMode.WordWrap:
+					Control.LineBreakMode = NSLineBreakMode.ByWordWrapping;
+					Control.MaximumNumberOfLines = 0;
+					break;
+				case LineBreakMode.CharacterWrap:
+					Control.LineBreakMode = NSLineBreakMode.CharWrapping;
+					Control.MaximumNumberOfLines = 0;
+					break;
+				case LineBreakMode.HeadTruncation:
+					Control.LineBreakMode = NSLineBreakMode.TruncatingHead;
+					Control.MaximumNumberOfLines = 1;
+					break;
+				case LineBreakMode.MiddleTruncation:
+					Control.LineBreakMode = NSLineBreakMode.TruncatingMiddle;
+					Control.MaximumNumberOfLines = 1;
+					break;
+				case LineBreakMode.TailTruncation:
+					Control.LineBreakMode = NSLineBreakMode.TruncatingTail;
+					Control.MaximumNumberOfLines = 1;
+					break;
+			}
+#endif
 		}
 
+		bool isTextFormatted;
 		void UpdateText()
 		{
 			_perfectSizeValid = false;
 
 			var values = Element.GetValues(Label.FormattedTextProperty, Label.TextProperty, Label.TextColorProperty);
-			var formatted = (FormattedString)values[0];
+			var formatted = values[0] as FormattedString;
 			if (formatted != null)
+			{
+#if __MOBILE__
 				Control.AttributedText = formatted.ToAttributed(Element, (Color)values[2]);
+#else
+				Control.AttributedStringValue = formatted.ToAttributed(Element, (Color)values[2]);
+#endif
+				isTextFormatted = true;
+			}
 			else
 			{
+				if (isTextFormatted)
+				{
+					UpdateFont();
+					UpdateTextColor();
+				}
+#if __MOBILE__
 				Control.Text = (string)values[1];
-				// default value of color documented to be black in iOS docs
-				Control.Font = Element.ToUIFont();
-				Control.TextColor = ((Color)values[2]).ToUIColor(ColorExtensions.Black);
+#else
+				Control.StringValue = (string)values[1] ?? "";
+#endif
+				isTextFormatted = false;
 			}
+			UpdateLayout();
+		}
 
+		void UpdateFont()
+		{
+			if(isTextFormatted)
+				return;
+			_perfectSizeValid = false;
+
+#if __MOBILE__
+			Control.Font = Element.ToUIFont();
+#else
+			Control.Font = Element.ToNSFont();
+#endif
+			UpdateLayout();
+		}
+
+		void UpdateTextColor()
+		{
+			if (isTextFormatted)
+				return;
+			
+			_perfectSizeValid = false;
+
+			var textColor = (Color)Element.GetValue(Label.TextColorProperty);
+
+			// default value of color documented to be black in iOS docs
+#if __MOBILE__
+			Control.TextColor = textColor.ToUIColor(ColorExtensions.Black);
+#else
+			Control.TextColor = textColor.ToNSColor(ColorExtensions.Black);
+#endif
+			UpdateLayout();
+		}
+
+		void UpdateLayout()
+		{
+#if __MOBILE__
 			LayoutSubviews();
+#else
+			Layout();
+#endif
 		}
 	}
 }

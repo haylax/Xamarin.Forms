@@ -9,6 +9,10 @@ using Xamarin.Forms.Core.UITests;
 
 namespace Xamarin.Forms.Controls.Issues
 {
+#if UITEST
+	[Category(UITestCategories.Gestures)]
+#endif
+
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Bugzilla, 39530, "Frames do not handle pan or pinch gestures under AppCompat", PlatformAffected.Android)]
 	public class Bugzilla39530 : TestContentPage
@@ -57,15 +61,24 @@ namespace Xamarin.Forms.Controls.Issues
 
 #if UITEST
 		[Test]
+#if __MACOS__
+		[Ignore("UITest.Desktop doesn't return empty NSView yet so it can't find the frame")]
+#endif
 		public void Bugzilla39530PanTest()
 		{
+			// Got to wait for the element to be visible to the UI test framework, otherwise we get occasional 
+			// index out of bounds exceptions if the query for the frame and its Rect run quickly enough
+			RunningApp.WaitForElement(q => q.Marked("frame"));
 			AppRect frameBounds = RunningApp.Query (q => q.Marked ("frame"))[0].Rect;
-			RunningApp.Pan (new Drag (frameBounds, frameBounds.X + 10, frameBounds.Y + 10, frameBounds.X + 100, frameBounds.Y + 100, Drag.Direction.LeftToRight));
+			RunningApp.Pan (new Drag (frameBounds, frameBounds.CenterX, frameBounds.Y + 10, frameBounds.X + 100, frameBounds.Y + 100, Drag.Direction.LeftToRight));
 
 			RunningApp.WaitForElement (q => q.Marked ("Panning: Completed"));
 		}
 
 		[Test]
+#if __MACOS__
+		[Ignore("UITest.Desktop doesn't return empty NSView yet so it can't find the frame")]
+#endif
 		public void Bugzilla39530PinchTest()
 		{
 			RunningApp.PinchToZoomIn ("frame");
@@ -73,6 +86,9 @@ namespace Xamarin.Forms.Controls.Issues
 		}
 
 		[Test]
+#if __MACOS__
+		[Ignore("UITest.Desktop doesn't return empty NSView yet so it can't find the frame")]
+#endif
 		public void Bugzilla39530TapTest()
 		{
 			RunningApp.WaitForElement (q => q.Marked ("frame"));

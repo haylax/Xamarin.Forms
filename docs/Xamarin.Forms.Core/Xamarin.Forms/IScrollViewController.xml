@@ -13,7 +13,7 @@
     </Interface>
   </Interfaces>
   <Docs>
-    <summary>Interface for a scrollview controller.</summary>
+    <summary>For internal use by platform renderers.</summary>
     <remarks>To be added.</remarks>
   </Docs>
   <Members>
@@ -34,9 +34,9 @@
         <Parameter Name="position" Type="Xamarin.Forms.ScrollToPosition" />
       </Parameters>
       <Docs>
-        <param name="item">To be added.</param>
-        <param name="position">To be added.</param>
-        <summary>Calculates and returns a point that represents the scroll position that results in <paramref name="item" /> being displayed at <paramref name="position" /> in the scroll view.</summary>
+        <param name="item">For internal use by the Xamarin.Forms platform.</param>
+        <param name="position">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
@@ -54,7 +54,7 @@
         <ReturnType>System.EventHandler&lt;Xamarin.Forms.ScrollToRequestedEventArgs&gt;</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>Event that is raised when a request has been made to scroll the scroll view.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -72,7 +72,7 @@
       </ReturnValue>
       <Parameters />
       <Docs>
-        <summary>Attempts to set the scroll task completion source state to <c>RanToCompletion</c>.</summary>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -93,10 +93,9 @@
         <Parameter Name="y" Type="System.Double" />
       </Parameters>
       <Docs>
-        <param name="x">To be added.</param>
-        <param name="y">To be added.</param>
-        <summary>Sets the scroll position to (<paramref name="x" />,
-        <paramref name="y" />).</summary>
+        <param name="x">For internal use by the Xamarin.Forms platform.</param>
+        <param name="y">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by platform renderers.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>

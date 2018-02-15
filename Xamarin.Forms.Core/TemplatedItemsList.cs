@@ -8,10 +8,11 @@ using System.Threading.Tasks;
 using Cadenza.Collections;
 using Xamarin.Forms.Internals;
 
-namespace Xamarin.Forms
+namespace Xamarin.Forms.Internals
 {
 
-	internal sealed class TemplatedItemsList<TView, TItem> : BindableObject, ITemplatedItemsList<TItem>, IList, IDisposable
+	[EditorBrowsable(EditorBrowsableState.Never)]
+	public sealed class TemplatedItemsList<TView, TItem> : BindableObject, ITemplatedItemsList<TItem>, IList, IDisposable
 												where TView : BindableObject, IItemsView<TItem>
 												where TItem : BindableObject
 	{
@@ -522,13 +523,26 @@ namespace Xamarin.Forms
 			return GetIndex(item);
 		}
 
-		internal TItem CreateContent(int index, object item, bool insert = false)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public DataTemplate SelectDataTemplate(object item)
+		{
+			return ItemTemplate.SelectDataTemplate(item, _itemsView);
+		}
+
+		public TItem ActivateContent(int index, object item)
 		{
 			TItem content = ItemTemplate != null ? (TItem)ItemTemplate.CreateContent(item, _itemsView) : _itemsView.CreateDefault(item);
 
 			content = UpdateContent(content, index, item);
 
-			if (CachingStrategy == ListViewCachingStrategy.RecycleElement)
+			return content;
+		}
+
+		public TItem CreateContent(int index, object item, bool insert = false)
+		{
+			var content = ActivateContent(index, item);
+
+			if ((CachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
 				return content;
 
 			for (int i = _templatedObjects.Count; i <= index; i++)
@@ -890,7 +904,7 @@ namespace Xamarin.Forms
 
 		void OnGroupingEnabledChanged()
 		{
-			if (CachingStrategy == ListViewCachingStrategy.RecycleElement)
+			if ((CachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
 				_templatedObjects.Clear();
 
 			OnItemsSourceChanged(true);
@@ -951,28 +965,15 @@ namespace Xamarin.Forms
 
 		void OnProxyCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
 		{
-			OnProxyCollectionChanged(sender, e, true);
-		}
-
-		void OnProxyCollectionChanged(object sender, NotifyCollectionChangedEventArgs e, bool fixWindows = true)
-		{
 			if (IsGroupingEnabled)
 			{
 				OnCollectionChangedGrouped(e);
 				return;
 			}
 
-			if (CachingStrategy == ListViewCachingStrategy.RecycleElement)
+			if ((CachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
 			{
 				OnCollectionChanged(e);
-				return;
-			}
-
-			/* HACKAHACKHACK: LongListSelector on WP SL has a bug in that it completely fails to deal with
-			 * INCC notifications that include more than 1 item. */
-			if (fixWindows && Device.OS == TargetPlatform.WinPhone)
-			{
-				SplitCollectionChangedItems(e);
 				return;
 			}
 
@@ -1156,7 +1157,7 @@ namespace Xamarin.Forms
 						goto default;
 
 					for (var i = 0; i < e.NewItems.Count; i++)
-						OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, e.NewItems[i], e.NewStartingIndex + i), false);
+						OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, e.NewItems[i], e.NewStartingIndex + i));
 
 					break;
 
@@ -1165,7 +1166,7 @@ namespace Xamarin.Forms
 						goto default;
 
 					for (var i = 0; i < e.OldItems.Count; i++)
-						OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, e.OldItems[i], e.OldStartingIndex + i), false);
+						OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, e.OldItems[i], e.OldStartingIndex + i));
 
 					break;
 
@@ -1174,12 +1175,12 @@ namespace Xamarin.Forms
 						goto default;
 
 					for (var i = 0; i < e.OldItems.Count; i++)
-						OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, e.NewItems[i], e.OldItems[i], e.OldStartingIndex + i), false);
+						OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, e.NewItems[i], e.OldItems[i], e.OldStartingIndex + i));
 
 					break;
 
 				default:
-					OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset), false);
+					OnProxyCollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 					break;
 			}
 		}
@@ -1205,7 +1206,7 @@ namespace Xamarin.Forms
 
 			//Hack: the cell could still be visible on iOS because the cells are reloaded after this unhook 
 			//this causes some visual updates caused by a null datacontext and default values like IsVisible
-			if (Device.OS == TargetPlatform.iOS && CachingStrategy == ListViewCachingStrategy.RetainElement)
+			if (Device.RuntimePlatform == Device.iOS && CachingStrategy == ListViewCachingStrategy.RetainElement)
 				await Task.Delay(100);
 			item.BindingContext = null;
 		}

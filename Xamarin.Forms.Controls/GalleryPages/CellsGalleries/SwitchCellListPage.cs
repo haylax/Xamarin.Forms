@@ -16,11 +16,8 @@ namespace Xamarin.Forms.Controls
 		{
 			Title = "SwitchCell List Gallery - Legacy";
 
-			Device.OnPlatform (iOS: () => {
-				if (Device.Idiom == TargetIdiom.Tablet) {
-					Padding = new Thickness (0, 0, 0, 60);
-				}
-			});
+			if (Device.RuntimePlatform == Device.iOS && Device.Idiom == TargetIdiom.Tablet)
+				Padding = new Thickness(0, 0, 0, 60);
 
 			var dataTemplate = new DataTemplate (typeof (SwitchCell)) {
 				Bindings = {
@@ -32,6 +29,7 @@ namespace Xamarin.Forms.Controls
 			var label = new Label { Text = "I have not been selected" };
 
 			var listView = new ListView {
+				AutomationId = CellTypeList.CellTestContainerId,
 				ItemsSource = Enumerable.Range (0, 100).Select (i => new SwitchCellItem {
 					Label = "Label " + i,
 					SwitchOn =  i % 2 == 0 ? false : true,

@@ -8,7 +8,7 @@ using Xamarin.UITest;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve(AllMembers = true)]
 	[Issue(IssueTracker.Bugzilla, 41424, "[Android] Clicking cancel on a DatePicker does not cause it to unfocus", PlatformAffected.Android)]
@@ -44,15 +44,12 @@ namespace Xamarin.Forms.Controls
 		public void DatePickerCancelShouldUnfocus()
 		{
 			RunningApp.Tap(q => q.Marked(DatePicker));
-			RunningApp.WaitForElement(q => q.Marked("Cancel"));
-
-			RunningApp.Tap(q => q.Marked("Cancel"));
+					
+			RunningApp.Back();
 			RunningApp.WaitForElement(q => q.Marked("Click to focus DatePicker"));
 
 			RunningApp.Tap(q => q.Marked("Click to focus DatePicker"));
-			RunningApp.WaitForElement(q => q.Marked("Cancel"));
-
-			RunningApp.Tap(q => q.Marked("Cancel"));
+			RunningApp.Back();
 		}
 #endif
 		

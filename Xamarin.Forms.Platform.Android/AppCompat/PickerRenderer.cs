@@ -1,11 +1,15 @@
-using System;
-using System.ComponentModel;
-using System.Linq;
 using Android.App;
 using Android.Content.Res;
 using Android.Text;
+using Android.Util;
 using Android.Widget;
+using System;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
+using Android.Content;
 using Object = Java.Lang.Object;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
 
 namespace Xamarin.Forms.Platform.Android.AppCompat
 {
@@ -15,6 +19,12 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		bool _disposed;
 		TextColorSwitcher _textColorSwitcher;
 
+		public PickerRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use PickerRenderer(Context) instead.")]
 		public PickerRenderer()
 		{
 			AutoPackage = false;
@@ -31,7 +41,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 			{
 				_disposed = true;
 
-				((ObservableList<string>)Element.Items).CollectionChanged -= RowsCollectionChanged;
+				((INotifyCollectionChanged)Element.Items).CollectionChanged -= RowsCollectionChanged;
 			}
 
 			base.Dispose(disposing);
@@ -40,11 +50,11 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		protected override void OnElementChanged(ElementChangedEventArgs<Picker> e)
 		{
 			if (e.OldElement != null)
-				((ObservableList<string>)e.OldElement.Items).CollectionChanged -= RowsCollectionChanged;
+				((INotifyCollectionChanged)e.OldElement.Items).CollectionChanged -= RowsCollectionChanged;
 
 			if (e.NewElement != null)
 			{
-				((ObservableList<string>)e.NewElement.Items).CollectionChanged += RowsCollectionChanged;
+				((INotifyCollectionChanged)e.NewElement.Items).CollectionChanged += RowsCollectionChanged;
 				if (Control == null)
 				{
 					EditText textField = CreateNativeControl();
@@ -53,9 +63,13 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 					textField.Tag = this;
 					textField.InputType = InputTypes.Null;
 					textField.SetOnClickListener(PickerListener.Instance);
-					_textColorSwitcher = new TextColorSwitcher(textField.TextColors);
+
+					var useLegacyColorManagement = e.NewElement.UseLegacyColorManagement();
+					_textColorSwitcher = new TextColorSwitcher(textField.TextColors, useLegacyColorManagement);
+					
 					SetNativeControl(textField);
 				}
+				UpdateFont();
 				UpdatePicker();
 				UpdateTextColor();
 			}
@@ -69,10 +83,12 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 			if (e.PropertyName == Picker.TitleProperty.PropertyName)
 				UpdatePicker();
-			if (e.PropertyName == Picker.SelectedIndexProperty.PropertyName)
+			else if (e.PropertyName == Picker.SelectedIndexProperty.PropertyName)
 				UpdatePicker();
-			if (e.PropertyName == Picker.TextColorProperty.PropertyName)
+			else if (e.PropertyName == Picker.TextColorProperty.PropertyName)
 				UpdateTextColor();
+			else if (e.PropertyName == Picker.FontAttributesProperty.PropertyName || e.PropertyName == Picker.FontFamilyProperty.PropertyName || e.PropertyName == Picker.FontSizeProperty.PropertyName)
+				UpdateFont();
 		}
 
 		internal override void OnFocusChangeRequested(object sender, VisualElement.FocusRequestArgs e)
@@ -110,7 +126,7 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 				_dialog.SetCanceledOnTouchOutside(true);
 				_dialog.DismissEvent += (sender, args) =>
 				{
-					((IElementController)Element).SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
+					(Element as IElementController)?.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
 					_dialog.Dispose();
 					_dialog = null;
 				};
@@ -122,6 +138,12 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		void RowsCollectionChanged(object sender, EventArgs e)
 		{
 			UpdatePicker();
+		}
+
+		void UpdateFont()
+		{
+			Control.Typeface = Element.ToTypeface();
+			Control.SetTextSize(ComplexUnitType.Sp, (float)Element.FontSize);
 		}
 
 		void UpdatePicker()

@@ -1,10 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Windows.Input;
 
 namespace Xamarin.Forms
 {
+
 	public class MenuItem : BaseMenuItem, IMenuItemController
 	{
+		public static readonly BindableProperty AcceleratorProperty = BindableProperty.CreateAttached(nameof(Accelerator), typeof(Accelerator), typeof(MenuItem), null);
+
+		public static Accelerator GetAccelerator(BindableObject bindable) => (Accelerator)bindable.GetValue(AcceleratorProperty);
+
+		public static void SetAccelerator(BindableObject bindable, Accelerator value) => bindable.SetValue(AcceleratorProperty, value);
+
 		public static readonly BindableProperty TextProperty = BindableProperty.Create("Text", typeof(string), typeof(MenuItem), null);
 
 		public static readonly BindableProperty CommandProperty = BindableProperty.Create("Command", typeof(ICommand), typeof(MenuItem), null,
@@ -17,9 +26,11 @@ namespace Xamarin.Forms
 
 		public static readonly BindableProperty IconProperty = BindableProperty.Create("Icon", typeof(FileImageSource), typeof(MenuItem), default(FileImageSource));
 
-		internal static readonly BindableProperty IsEnabledProperty = BindableProperty.Create("IsEnabled", typeof(bool), typeof(ToolbarItem), true);
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public static readonly BindableProperty IsEnabledProperty = BindableProperty.Create("IsEnabled", typeof(bool), typeof(ToolbarItem), true);
 
-		string IMenuItemController.IsEnabledPropertyName
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public string IsEnabledPropertyName
 		{
 			get
 			{
@@ -57,18 +68,11 @@ namespace Xamarin.Forms
 			set { SetValue(TextProperty, value); }
 		}
 
-		internal bool IsEnabled
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool IsEnabled
 		{
 			get { return (bool)GetValue(IsEnabledProperty); }
 			set { SetValue(IsEnabledProperty, value); }
-		}
-
-		bool IMenuItemController.IsEnabled
-		{
-			get
-			{
-				return IsEnabled;
-			}
 		}
 
 		bool IsEnabledCore
@@ -85,7 +89,8 @@ namespace Xamarin.Forms
 				handler(this, EventArgs.Empty);
 		}
 
-		void IMenuItemController.Activate()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void Activate()
 		{
 			if (Command != null)
 			{

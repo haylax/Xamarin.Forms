@@ -1,18 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-#if __UNIFIED__
-using UIKit;
 
-#else
-using MonoTouch.UIKit;
-#endif
-
+#if __MOBILE__
 namespace Xamarin.Forms.Platform.iOS
+#else
+
+namespace Xamarin.Forms.Platform.MacOS
+#endif
 {
 	public sealed class RendererPool
 	{
-		readonly Dictionary<Type, Stack<IVisualElementRenderer>> _freeRenderers = new Dictionary<Type, Stack<IVisualElementRenderer>>();
+		readonly Dictionary<Type, Stack<IVisualElementRenderer>> _freeRenderers =
+			new Dictionary<Type, Stack<IVisualElementRenderer>>();
 
 		readonly VisualElement _oldElement;
 
@@ -35,7 +34,7 @@ namespace Xamarin.Forms.Platform.iOS
 			if (view == null)
 				throw new ArgumentNullException("view");
 
-			var rendererType = Registrar.Registered.GetHandlerType(view.GetType()) ?? typeof(ViewRenderer);
+			var rendererType = Internals.Registrar.Registered.GetHandlerTypeForObject(view) ?? typeof(ViewRenderer);
 
 			Stack<IVisualElementRenderer> renderers;
 			if (!_freeRenderers.TryGetValue(rendererType, out renderers) || renderers.Count == 0)
@@ -92,7 +91,9 @@ namespace Xamarin.Forms.Platform.iOS
 				{
 					PushRenderer(childRenderer);
 
-					if (ReferenceEquals(childRenderer, Platform.GetRenderer(childRenderer.Element)))
+					// The ListView CalculateHeightForCell method can create renderers and dispose its child renderers before this is called.
+					// Thus, it is possible that this work is already completed.
+					if (childRenderer.Element != null && ReferenceEquals(childRenderer, Platform.GetRenderer(childRenderer.Element)))
 						childRenderer.Element.ClearValue(Platform.RendererProperty);
 				}
 
@@ -107,17 +108,22 @@ namespace Xamarin.Forms.Platform.iOS
 				var child = logicalChild as VisualElement;
 				if (child != null)
 				{
-					var renderer = GetFreeRenderer(child) ?? Platform.CreateRenderer(child);
-					Platform.SetRenderer(child, renderer);
-
-					_parent.NativeView.AddSubview(renderer.NativeView);
+					if (CompressedLayout.GetIsHeadless(child)) {
+						child.IsPlatformEnabled = true;
+						FillChildrenWithRenderers(child);
+					} else {
+						var renderer = GetFreeRenderer(child) ?? Platform.CreateRenderer(child);
+						Platform.SetRenderer(child, renderer);
+						_parent.NativeView.AddSubview(renderer.NativeView);
+					}
 				}
 			}
 		}
 
 		void PushRenderer(IVisualElementRenderer renderer)
 		{
-			var rendererType = renderer.GetType();
+			var reflectableType = renderer as System.Reflection.IReflectableType;
+			var rendererType = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : renderer.GetType();
 
 			Stack<IVisualElementRenderer> renderers;
 			if (!_freeRenderers.TryGetValue(rendererType, out renderers))

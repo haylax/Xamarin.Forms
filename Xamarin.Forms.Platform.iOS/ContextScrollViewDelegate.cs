@@ -1,23 +1,9 @@
 ﻿using System;
-using System.Drawing;
 using System.Collections.Generic;
-#if __UNIFIED__
 using UIKit;
-using Foundation;
-#else
-using MonoTouch.UIKit;
-using MonoTouch.Foundation;
-#endif
-#if __UNIFIED__
 using NSAction = System.Action;
-using RectangleF = CoreGraphics.CGRect;
-using SizeF = CoreGraphics.CGSize;
 using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-#endif
+using RectangleF = CoreGraphics.CGRect;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -59,7 +45,7 @@ namespace Xamarin.Forms.Platform.iOS
 		GlobalCloseContextGestureRecognizer _globalCloser;
 
 		bool _isDisposed;
-
+		static WeakReference<UIScrollView> s_scrollViewBeingScrolled;
 		UITableView _table;
 
 		public ContextScrollViewDelegate(UIView container, List<UIButton> buttons, bool isOpen)
@@ -86,6 +72,11 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override void DraggingStarted(UIScrollView scrollView)
 		{
+			if (ShouldIgnoreScrolling(scrollView))
+				return;
+
+			s_scrollViewBeingScrolled = new WeakReference<UIScrollView>(scrollView);
+			
 			if (!IsOpen)
 				SetButtonsShowing(true);
 
@@ -104,6 +95,9 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override void Scrolled(UIScrollView scrollView)
 		{
+			if (ShouldIgnoreScrolling(scrollView))
+				return;
+
 			var width = _finalButtonSize;
 			var count = _buttons.Count;
 
@@ -130,10 +124,9 @@ namespace Xamarin.Forms.Platform.iOS
 				SetButtonsShowing(false);
 				RestoreHighlight(scrollView);
 
+				s_scrollViewBeingScrolled = null;
 				ClearCloserRecognizer(scrollView);
-
-				if (ClosedCallback != null)
-					ClosedCallback();
+				ClosedCallback?.Invoke();
 			}
 		}
 
@@ -145,6 +138,9 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override void WillEndDragging(UIScrollView scrollView, PointF velocity, ref PointF targetContentOffset)
 		{
+			if (ShouldIgnoreScrolling(scrollView))
+				return;
+
 			var width = ButtonsWidth;
 			var x = targetContentOffset.X;
 			var parentThreshold = scrollView.Frame.Width * .4f;
@@ -201,6 +197,21 @@ namespace Xamarin.Forms.Platform.iOS
 			}
 		}
 
+		static bool ShouldIgnoreScrolling(UIScrollView scrollView)
+		{
+			if (s_scrollViewBeingScrolled == null)
+				return false;
+
+			UIScrollView scrollViewBeingScrolled;
+			if (!s_scrollViewBeingScrolled.TryGetTarget(out scrollViewBeingScrolled) 
+				|| ReferenceEquals(scrollViewBeingScrolled, scrollView) 
+				|| !ReferenceEquals(((ContextScrollViewDelegate)scrollViewBeingScrolled.Delegate)?._table, ((ContextScrollViewDelegate)scrollView.Delegate)?._table))
+				return false;
+
+			scrollView.SetContentOffset(new PointF(0, 0), false);
+			return true;
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (_isDisposed)
@@ -212,6 +223,7 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				ClosedCallback = null;
 
+				s_scrollViewBeingScrolled = null;
 				_table = null;
 				_backgroundView = null;
 				_container = null;
@@ -224,7 +236,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void ClearCloserRecognizer(UIScrollView scrollView)
 		{
-			if (_globalCloser == null)
+			if (_globalCloser == null || _globalCloser.State == UIGestureRecognizerState.Cancelled)
 				return;
 
 			var cell = GetContextCell(scrollView);

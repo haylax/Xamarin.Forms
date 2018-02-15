@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms
 {
-	public partial class VisualElement : Element, IAnimatable, IVisualElementController, IResourcesProvider
+	public partial class VisualElement : Element, IAnimatable, IVisualElementController, IResourcesProvider, IFlowDirectionController
 	{
 		internal static readonly BindablePropertyKey NavigationPropertyKey = BindableProperty.CreateReadOnly("Navigation", typeof(INavigation), typeof(VisualElement), default(INavigation));
 
@@ -12,7 +13,8 @@ namespace Xamarin.Forms
 
 		public static readonly BindableProperty InputTransparentProperty = BindableProperty.Create("InputTransparent", typeof(bool), typeof(VisualElement), default(bool));
 
-		public static readonly BindableProperty IsEnabledProperty = BindableProperty.Create("IsEnabled", typeof(bool), typeof(VisualElement), true);
+		public static readonly BindableProperty IsEnabledProperty = BindableProperty.Create("IsEnabled", typeof(bool), 
+			typeof(VisualElement), true, propertyChanged: OnIsEnabledPropertyChanged);
 
 		static readonly BindablePropertyKey XPropertyKey = BindableProperty.CreateReadOnly("X", typeof(double), typeof(VisualElement), default(double));
 
@@ -86,10 +88,38 @@ namespace Xamarin.Forms
 
 		public static readonly BindableProperty MinimumHeightRequestProperty = BindableProperty.Create("MinimumHeightRequest", typeof(double), typeof(VisualElement), -1d, propertyChanged: OnRequestChanged);
 
-		internal static readonly BindablePropertyKey IsFocusedPropertyKey = BindableProperty.CreateReadOnly("IsFocused", typeof(bool), typeof(VisualElement), default(bool),
-			propertyChanged: OnIsFocusedPropertyChanged);
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public static readonly BindablePropertyKey IsFocusedPropertyKey = BindableProperty.CreateReadOnly("IsFocused", 
+			typeof(bool), typeof(VisualElement), default(bool), propertyChanged: OnIsFocusedPropertyChanged);
 
 		public static readonly BindableProperty IsFocusedProperty = IsFocusedPropertyKey.BindableProperty;
+
+		public static readonly BindableProperty FlowDirectionProperty = BindableProperty.Create(nameof(FlowDirection), typeof(FlowDirection), typeof(VisualElement), FlowDirection.MatchParent, propertyChanged: FlowDirectionChanged);
+
+		IFlowDirectionController FlowController => this;
+
+		public FlowDirection FlowDirection
+		{
+			get { return (FlowDirection)GetValue(FlowDirectionProperty); }
+			set { SetValue(FlowDirectionProperty, value); }
+		}
+
+		EffectiveFlowDirection _effectiveFlowDirection = default(EffectiveFlowDirection);
+		EffectiveFlowDirection IFlowDirectionController.EffectiveFlowDirection
+		{
+			get { return _effectiveFlowDirection; }
+			set
+			{
+				if (value == _effectiveFlowDirection)
+					return;
+
+				_effectiveFlowDirection = value;
+				InvalidateMeasureInternal(InvalidationTrigger.Undefined);
+				OnPropertyChanged(FlowDirectionProperty.PropertyName);
+			}
+		}
+
+		EffectiveFlowDirection IVisualElementController.EffectiveFlowDirection => FlowController.EffectiveFlowDirection;
 
 		readonly Dictionary<Size, SizeRequest> _measureCache = new Dictionary<Size, SizeRequest>();
 
@@ -112,7 +142,6 @@ namespace Xamarin.Forms
 
 		double _mockY = -1;
 
-		ResourceDictionary _resources;
 		LayoutConstraint _selfConstraint;
 
 		internal VisualElement()
@@ -188,6 +217,7 @@ namespace Xamarin.Forms
 			get { return (bool)GetValue(IsFocusedProperty); }
 		}
 
+		[TypeConverter(typeof(VisibilityConverter))]
 		public bool IsVisible
 		{
 			get { return (bool)GetValue(IsVisibleProperty); }
@@ -248,7 +278,7 @@ namespace Xamarin.Forms
 			set { SetValue(StyleProperty, value); }
 		}
 
-		[TypeConverter (typeof(ListStringTypeConverter))]
+		[TypeConverter(typeof(ListStringTypeConverter))]
 		public IList<string> StyleClass
 		{
 			get { return _mergedStyle.StyleClass; }
@@ -296,7 +326,8 @@ namespace Xamarin.Forms
 			private set { SetValue(YPropertyKey, value); }
 		}
 
-		internal bool Batched
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool Batched
 		{
 			get { return _batched > 0; }
 		}
@@ -322,9 +353,11 @@ namespace Xamarin.Forms
 			get { return ComputedConstraint | SelfConstraint; }
 		}
 
-		internal bool DisableLayout { get; set; }
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool DisableLayout { get; set; }
 
-		internal bool IsInNativeLayout
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool IsInNativeLayout
 		{
 			get
 			{
@@ -332,12 +365,11 @@ namespace Xamarin.Forms
 					return true;
 
 				Element parent = RealParent;
-				while (parent != null)
+				if (parent != null)
 				{
 					var visualElement = parent as VisualElement;
 					if (visualElement != null && visualElement.IsInNativeLayout)
 						return true;
-					parent = parent.RealParent;
 				}
 
 				return false;
@@ -345,7 +377,8 @@ namespace Xamarin.Forms
 			set { _isInNativeLayout = value; }
 		}
 
-		internal bool IsNativeStateConsistent
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool IsNativeStateConsistent
 		{
 			get { return _isNativeStateConsistent; }
 			set
@@ -358,7 +391,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		internal bool IsPlatformEnabled
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool IsPlatformEnabled
 		{
 			get { return _isPlatformEnabled; }
 			set
@@ -374,7 +408,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		internal NavigationProxy NavigationProxy
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public NavigationProxy NavigationProxy
 		{
 			get { return Navigation as NavigationProxy; }
 		}
@@ -409,9 +444,18 @@ namespace Xamarin.Forms
 				BatchCommitted(this, new EventArg<VisualElement>(this));
 		}
 
+		ResourceDictionary _resources;
+		bool IResourcesProvider.IsResourcesCreated => _resources != null;
+
 		public ResourceDictionary Resources
 		{
-			get { return _resources; }
+			get {
+				if (_resources != null)
+					return _resources;
+				_resources = new ResourceDictionary();
+				((IResourceDictionary)_resources).ValuesChanged += OnResourcesChanged;
+				return _resources;
+			}
 			set
 			{
 				if (_resources == value)
@@ -427,7 +471,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		void IVisualElementController.NativeSizeChanged()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void NativeSizeChanged()
 		{
 			InvalidateMeasureInternal(InvalidationTrigger.MeasureChanged);
 		}
@@ -449,7 +494,7 @@ namespace Xamarin.Forms
 
 		public event EventHandler<FocusEventArgs> Focused;
 
-		[Obsolete("Use Measure")]
+		[Obsolete("OnSizeRequest is obsolete as of version 2.2.0. Please use OnMeasure instead.")]
 		public virtual SizeRequest GetSizeRequest(double widthConstraint, double heightConstraint)
 		{
 			SizeRequest cachedResult;
@@ -529,9 +574,6 @@ namespace Xamarin.Forms
 
 			if (includeMargins)
 			{
-				
-				
-
 				if (!margin.IsDefault)
 				{
 					result.Minimum = new Size(result.Minimum.Width + margin.HorizontalThickness, result.Minimum.Height + margin.VerticalThickness);
@@ -608,13 +650,15 @@ namespace Xamarin.Forms
 				NavigationProxy.Inner = null;
 			}
 #pragma warning restore 0618
+
+			FlowController.NotifyFlowDirectionChanged();
 		}
 
 		protected virtual void OnSizeAllocated(double width, double height)
 		{
 		}
 
-		[Obsolete("Use OnMeasure")]
+		[Obsolete("OnSizeRequest is obsolete as of version 2.2.0. Please use OnMeasure instead.")]
 		protected virtual SizeRequest OnSizeRequest(double widthConstraint, double heightConstraint)
 		{
 			if (Platform == null || !IsPlatformEnabled)
@@ -629,7 +673,8 @@ namespace Xamarin.Forms
 			OnSizeAllocated(width, height);
 		}
 
-		internal event EventHandler<EventArg<VisualElement>> BatchCommitted;
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public event EventHandler<EventArg<VisualElement>> BatchCommitted;
 
 		internal void ComputeConstrainsForChildren()
 		{
@@ -646,8 +691,14 @@ namespace Xamarin.Forms
 			view.ComputedConstraint = LayoutConstraint.None;
 		}
 
-		internal event EventHandler<FocusRequestArgs> FocusChangeRequested;
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public event EventHandler<FocusRequestArgs> FocusChangeRequested;
 
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void InvalidateMeasureNonVirtual(InvalidationTrigger trigger)
+		{
+			InvalidateMeasureInternal(trigger);
+		}
 		internal virtual void InvalidateMeasureInternal(InvalidationTrigger trigger)
 		{
 			_measureCache.Clear();
@@ -661,10 +712,14 @@ namespace Xamarin.Forms
 
 		internal void MockBounds(Rectangle bounds)
 		{
+#if NETSTANDARD2_0
+			(_mockX, _mockY, _mockWidth, _mockHeight) = bounds;
+#else
 			_mockX = bounds.X;
 			_mockY = bounds.Y;
 			_mockWidth = bounds.Width;
 			_mockHeight = bounds.Height;
+#endif
 		}
 
 		internal virtual void OnConstraintChanged(LayoutConstraint oldConstraint, LayoutConstraint newConstraint)
@@ -681,12 +736,20 @@ namespace Xamarin.Forms
 			InvalidateMeasureInternal(InvalidationTrigger.Undefined);
 		}
 
+		internal override void OnResourcesChanged(object sender, ResourcesChangedEventArgs e)
+		{
+			if (e == ResourcesChangedEventArgs.StyleSheets)
+				ApplyStyleSheets();
+			else
+				base.OnResourcesChanged(sender, e);
+		}
+
 		internal override void OnParentResourcesChanged(IEnumerable<KeyValuePair<string, object>> values)
 		{
 			if (values == null)
 				return;
 
-			if (Resources == null || Resources.Count == 0)
+			if (!((IResourcesProvider)this).IsResourcesCreated || Resources.Count == 0)
 			{
 				base.OnParentResourcesChanged(values);
 				return;
@@ -723,9 +786,44 @@ namespace Xamarin.Forms
 				focus(this, new FocusEventArgs(this, true));
 		}
 
+		static void FlowDirectionChanged(BindableObject bindable, object oldValue, object newValue)
+		{
+			var self = bindable as IFlowDirectionController;
+
+			if (self.EffectiveFlowDirection.IsExplicit() && oldValue == newValue)
+				return;
+
+			var newFlowDirection = (FlowDirection)newValue;
+
+			self.EffectiveFlowDirection = newFlowDirection.ToEffectiveFlowDirection(isExplicit: true);
+
+			self.NotifyFlowDirectionChanged();
+		}
+
+		static void OnIsEnabledPropertyChanged(BindableObject bindable, object oldValue, object newValue)
+		{
+			var element = (VisualElement)bindable;
+
+			if (element == null)
+			{
+				return;
+			}
+
+			var isEnabled = (bool)newValue;
+
+			VisualStateManager.GoToState(element, isEnabled 
+				? VisualStateManager.CommonStates.Normal 
+				: VisualStateManager.CommonStates.Disabled);
+		}
+
 		static void OnIsFocusedPropertyChanged(BindableObject bindable, object oldvalue, object newvalue)
 		{
-			var element = bindable as VisualElement;
+			var element = (VisualElement)bindable;
+
+			if (element == null)
+			{
+				return;
+			}
 
 			var isFocused = (bool)newvalue;
 			if (isFocused)
@@ -736,6 +834,10 @@ namespace Xamarin.Forms
 			{
 				element.OnUnfocus();
 			}
+
+			VisualStateManager.GoToState(element, isFocused
+				? VisualStateManager.CommonStates.Normal
+				: VisualStateManager.CommonStates.Focused);
 		}
 
 		static void OnRequestChanged(BindableObject bindable, object oldvalue, object newvalue)
@@ -762,6 +864,19 @@ namespace Xamarin.Forms
 				unFocus(this, new FocusEventArgs(this, false));
 		}
 
+		void IFlowDirectionController.NotifyFlowDirectionChanged()
+		{
+			SetFlowDirectionFromParent(this);
+
+			foreach (var element in LogicalChildren)
+			{
+				var view = element as IFlowDirectionController;
+				if (view == null)
+					continue;
+				view.NotifyFlowDirectionChanged();
+			}
+		}
+
 		void SetSize(double width, double height)
 		{
 			if (Width == width && Height == height)
@@ -775,11 +890,32 @@ namespace Xamarin.Forms
 				SizeChanged(this, EventArgs.Empty);
 		}
 
-		internal class FocusRequestArgs : EventArgs
+		public class FocusRequestArgs : EventArgs
 		{
 			public bool Focus { get; set; }
 
 			public bool Result { get; set; }
+		}
+
+		public class VisibilityConverter : TypeConverter
+		{
+			public override object ConvertFromInvariantString(string value)
+			{
+				if (value != null) {
+					if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+						return true;
+					if (value.Equals("visible", StringComparison.OrdinalIgnoreCase))
+						return true;
+					if (value.Equals("false", StringComparison.OrdinalIgnoreCase))
+						return false;
+					if (value.Equals("hidden", StringComparison.OrdinalIgnoreCase))
+						return false;
+					if (value.Equals("collapse", StringComparison.OrdinalIgnoreCase))
+						return false;
+				}
+				throw new InvalidOperationException(string.Format("Cannot convert \"{0}\" into {1}", value, typeof(bool)));
+
+			}
 		}
 	}
 }

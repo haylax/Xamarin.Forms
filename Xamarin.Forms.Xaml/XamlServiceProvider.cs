@@ -10,7 +10,7 @@ namespace Xamarin.Forms.Xaml.Internals
 	{
 		readonly Dictionary<Type, object> services = new Dictionary<Type, object>();
 
-		internal XamlServiceProvider(INode node, HydratationContext context)
+		internal XamlServiceProvider(INode node, HydrationContext context)
 		{
 			object targetObject;
 			if (node != null && node.Parent != null && context.Values.TryGetValue(node.Parent, out targetObject))
@@ -89,9 +89,9 @@ namespace Xamarin.Forms.Xaml.Internals
 		}
 	}
 
-	internal class XamlValueTargetProvider : IProvideParentValues, IProvideValueTarget
+	class XamlValueTargetProvider : IProvideParentValues, IProvideValueTarget
 	{
-		public XamlValueTargetProvider(object targetObject, INode node, HydratationContext context, object targetProperty)
+		public XamlValueTargetProvider(object targetObject, INode node, HydrationContext context, object targetProperty)
 		{
 			Context = context;
 			Node = node;
@@ -101,15 +101,9 @@ namespace Xamarin.Forms.Xaml.Internals
 
 		INode Node { get; }
 
-		HydratationContext Context { get; }
-
+		HydrationContext Context { get; }
 		public object TargetObject { get; }
-
-		public object TargetProperty
-		{
-			get { throw new NotImplementedException(); }
-			private set { }
-		}
+		public object TargetProperty { get; internal set; } = null;
 
 		IEnumerable<object> IProvideParentValues.ParentObjects
 		{
@@ -141,15 +135,22 @@ namespace Xamarin.Forms.Xaml.Internals
 	public class SimpleValueTargetProvider : IProvideParentValues, IProvideValueTarget
 	{
 		readonly object[] objectAndParents;
+		readonly object targetProperty;
 
-		public SimpleValueTargetProvider(object[] objectAndParents)
+		[Obsolete("SimpleValueTargetProvider(object[] objectAndParents) is obsolete as of version 2.3.4. Please use SimpleValueTargetProvider(object[] objectAndParents, object targetProperty) instead.")]
+		public SimpleValueTargetProvider(object[] objectAndParents) : this (objectAndParents, null)
+		{
+		}
+
+		public SimpleValueTargetProvider(object[] objectAndParents, object targetProperty)
 		{
 			if (objectAndParents == null)
-				throw new ArgumentNullException("objectAndParents");
+				throw new ArgumentNullException(nameof(objectAndParents));
 			if (objectAndParents.Length == 0)
 				throw new ArgumentException();
 
 			this.objectAndParents = objectAndParents;
+			this.targetProperty = targetProperty;
 		}
 
 		IEnumerable<object> IProvideParentValues.ParentObjects
@@ -164,7 +165,7 @@ namespace Xamarin.Forms.Xaml.Internals
 
 		object IProvideValueTarget.TargetProperty
 		{
-			get { throw new NotImplementedException(); }
+			get { return targetProperty; }
 		}
 	}
 
@@ -235,7 +236,7 @@ namespace Xamarin.Forms.Xaml.Internals
 					xmlLineInfo = lineInfoProvider.XmlLineInfo;
 			}
 
-			var namespaceuri = prefix == null ? "" : namespaceResolver.LookupNamespace(prefix);
+			var namespaceuri = namespaceResolver.LookupNamespace(prefix);
 			if (namespaceuri == null)
 			{
 				exception = new XamlParseException(string.Format("No xmlns declaration for prefix \"{0}\"", prefix), xmlLineInfo);
@@ -249,7 +250,7 @@ namespace Xamarin.Forms.Xaml.Internals
 			XmlType xmlType, IXmlLineInfo xmlInfo, Assembly currentAssembly, out XamlParseException exception);
 	}
 
-	internal class XamlRootObjectProvider : IRootObjectProvider
+	class XamlRootObjectProvider : IRootObjectProvider
 	{
 		public XamlRootObjectProvider(object rootObject)
 		{
@@ -267,11 +268,6 @@ namespace Xamarin.Forms.Xaml.Internals
 		}
 
 		public IXmlLineInfo XmlLineInfo { get; }
-	}
-
-	internal interface INameScopeProvider
-	{
-		INameScope NameScope { get; }
 	}
 
 	public class NameScopeProvider : INameScopeProvider

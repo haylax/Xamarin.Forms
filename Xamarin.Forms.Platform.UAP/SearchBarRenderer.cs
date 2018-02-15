@@ -1,7 +1,10 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
+using Xamarin.Forms.PlatformConfiguration.WindowsSpecific;
+using WVisualStateManager = Windows.UI.Xaml.VisualStateManager;
 
 namespace Xamarin.Forms.Platform.UWP
 {
@@ -26,6 +29,7 @@ namespace Xamarin.Forms.Platform.UWP
 					Control.QuerySubmitted += OnQuerySubmitted;
 					Control.TextChanged += OnTextChanged;
 					Control.Loaded += OnControlLoaded;
+					Control.AutoMaximizeSuggestionArea = false;
 				}
 
 				UpdateText();
@@ -62,6 +66,8 @@ namespace Xamarin.Forms.Platform.UWP
 				UpdateTextColor();
 			else if (e.PropertyName == SearchBar.PlaceholderColorProperty.PropertyName)
 				UpdatePlaceholderColor();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateAlignment();
 		}
 
 		void OnControlLoaded(object sender, RoutedEventArgs routedEventArgs)
@@ -71,11 +77,17 @@ namespace Xamarin.Forms.Platform.UWP
 			UpdateAlignment();
 			UpdateTextColor();
 			UpdatePlaceholderColor();
+			UpdateBackgroundColor();
+
+			// If the Forms VisualStateManager is in play or the user wants to disable the Forms legacy
+			// color stuff, then the underlying textbox should just use the Forms VSM states
+			_queryTextBox.UseFormsVsm = Element.HasVisualStateGroups()
+							|| !Element.OnThisPlatform().GetIsLegacyColorModeEnabled();
 		}
 
 		void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs e)
 		{
-			((ISearchBarController)Element).OnSearchButtonPressed();
+			Element.OnSearchButtonPressed();
 		}
 
 		void OnTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs e)
@@ -91,7 +103,7 @@ namespace Xamarin.Forms.Platform.UWP
 			if (_queryTextBox == null)
 				return;
 
-			_queryTextBox.TextAlignment = Element.HorizontalTextAlignment.ToNativeTextAlignment();
+			_queryTextBox.TextAlignment = Element.HorizontalTextAlignment.ToNativeTextAlignment(((IVisualElementController)Element).EffectiveFlowDirection);
 		}
 
 		void UpdateCancelButtonColor()
@@ -179,6 +191,23 @@ namespace Xamarin.Forms.Platform.UWP
 
 			BrushHelpers.UpdateColor(textColor, ref _defaultTextColorFocusBrush, 
 				() => _queryTextBox.ForegroundFocusBrush, brush => _queryTextBox.ForegroundFocusBrush = brush);
+		}
+
+		protected override void UpdateBackgroundColor()
+		{
+			if (_queryTextBox == null)
+				return;
+
+			Color backgroundColor = Element.BackgroundColor;
+			
+			if (!backgroundColor.IsDefault)
+			{
+				_queryTextBox.Background = backgroundColor.ToBrush();
+			}
+			else
+			{
+				_queryTextBox.ClearValue(Windows.UI.Xaml.Controls.Control.BackgroundProperty);
+			}
 		}
 	}
 }

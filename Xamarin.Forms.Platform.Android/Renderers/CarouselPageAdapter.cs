@@ -4,6 +4,7 @@ using System.Linq;
 using Android.Content;
 using Android.Support.V4.View;
 using Android.Views;
+using Xamarin.Forms.Internals;
 using Object = Java.Lang.Object;
 
 namespace Xamarin.Forms.Platform.Android
@@ -54,7 +55,7 @@ namespace Xamarin.Forms.Platform.Android
 			Page destroyedPage = holder.Instance.Item2;
 
 			IVisualElementRenderer renderer = Platform.GetRenderer(destroyedPage);
-			renderer.ViewGroup.RemoveFromParent();
+			renderer.View.RemoveFromParent();
 			holder.Instance.Item1.RemoveFromParent();
 		}
 
@@ -86,10 +87,10 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			ContentPage child = _page.Children.ElementAt(position);
 			if (Platform.GetRenderer(child) == null)
-				Platform.SetRenderer(child, Platform.CreateRenderer(child));
+				Platform.SetRenderer(child, Platform.CreateRenderer(child, _context));
 
 			IVisualElementRenderer renderer = Platform.GetRenderer(child);
-			renderer.ViewGroup.RemoveFromParent();
+			renderer.View.RemoveFromParent();
 
 			ViewGroup frame = new PageContainer(_context, renderer);
 
@@ -129,7 +130,7 @@ namespace Xamarin.Forms.Platform.Android
 					IVisualElementRenderer childPageRenderer = Platform.GetRenderer(childPage);
 					if (childPageRenderer != null)
 					{
-						childPageRenderer.ViewGroup.RemoveFromParent();
+						childPageRenderer.View.RemoveFromParent();
 						childPageRenderer.Dispose();
 						Platform.SetRenderer(childPage, null);
 					}

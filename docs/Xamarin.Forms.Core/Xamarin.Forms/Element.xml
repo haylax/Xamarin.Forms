@@ -102,9 +102,9 @@
         <ReturnType>System.String</ReturnType>
       </ReturnValue>
       <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
+        <summary>Gets or sets a value that allows the automation framework to find and interact with this element.</summary>
+        <value>A value that the automation framework can use to find and interact with this element.</value>
+        <remarks>This value may only be set once on an element.</remarks>
       </Docs>
     </Member>
     <Member MemberName="ChildAdded">
@@ -240,6 +240,77 @@
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
+    <Member MemberName="Descendants">
+      <MemberSignature Language="C#" Value="public System.Collections.Generic.IEnumerable&lt;Xamarin.Forms.Element&gt; Descendants ();" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance class System.Collections.Generic.IEnumerable`1&lt;class Xamarin.Forms.Element&gt; Descendants() cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+        <Attribute>
+          <AttributeName>System.Runtime.CompilerServices.IteratorStateMachine(typeof(Xamarin.Forms.Element/&lt;Descendants&gt;d__85))</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Collections.Generic.IEnumerable&lt;Xamarin.Forms.Element&gt;</ReturnType>
+      </ReturnValue>
+      <Parameters />
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <returns>To be added.</returns>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="EffectControlProvider">
+      <MemberSignature Language="C#" Value="public Xamarin.Forms.IEffectControlProvider EffectControlProvider { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class Xamarin.Forms.IEffectControlProvider EffectControlProvider" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.IEffectControlProvider</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="EffectIsAttached">
+      <MemberSignature Language="C#" Value="public bool EffectIsAttached (string name);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance bool EffectIsAttached(string name) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Boolean</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="name" Type="System.String" />
+      </Parameters>
+      <Docs>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <returns>To be added.</returns>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="Effects">
       <MemberSignature Language="C#" Value="public System.Collections.Generic.IList&lt;Xamarin.Forms.Effect&gt; Effects { get; }" />
       <MemberSignature Language="ILAsm" Value=".property instance class System.Collections.Generic.IList`1&lt;class Xamarin.Forms.Effect&gt; Effects" />
@@ -253,6 +324,26 @@
       <Docs>
         <summary>A list of the effects that are applied to this item.</summary>
         <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="GetMenu">
+      <MemberSignature Language="C#" Value="public static Xamarin.Forms.Menu GetMenu (Xamarin.Forms.BindableObject bindable);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig class Xamarin.Forms.Menu GetMenu(class Xamarin.Forms.BindableObject bindable) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.Menu</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="bindable" Type="Xamarin.Forms.BindableObject" />
+      </Parameters>
+      <Docs>
+        <param name="bindable">To be added.</param>
+        <summary>To be added.</summary>
+        <returns>To be added.</returns>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -277,6 +368,42 @@
         <summary>Gets a value that can be used to uniquely identify an element through the run of an application.</summary>
         <value>A Guid uniquely identifying the element.</value>
         <remarks>This value is generated at runtime and is not stable across runs of your app.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="LogicalChildren">
+      <MemberSignature Language="C#" Value="public System.Collections.ObjectModel.ReadOnlyCollection&lt;Xamarin.Forms.Element&gt; LogicalChildren { get; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class System.Collections.ObjectModel.ReadOnlyCollection`1&lt;class Xamarin.Forms.Element&gt; LogicalChildren" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Collections.ObjectModel.ReadOnlyCollection&lt;Xamarin.Forms.Element&gt;</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="MenuProperty">
+      <MemberSignature Language="C#" Value="public static readonly Xamarin.Forms.BindableProperty MenuProperty;" />
+      <MemberSignature Language="ILAsm" Value=".field public static initonly class Xamarin.Forms.BindableProperty MenuProperty" />
+      <MemberType>Field</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.BindableProperty</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>To be added.</summary>
+        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="OnBindingContextChanged">
@@ -441,7 +568,7 @@
       </AssemblyInfo>
       <Attributes>
         <Attribute>
-          <AttributeName>System.Obsolete("Use Parent")</AttributeName>
+          <AttributeName>System.Obsolete("ParentView is obsolete as of version 2.1.0. Please use Parent instead.")</AttributeName>
         </Attribute>
       </Attributes>
       <ReturnValue>
@@ -451,6 +578,68 @@
         <summary>Gets the element which is the closest ancestor of this element that is a <see cref="T:Xamarin.Forms.VisualElement" />.</summary>
         <value>The closest ansestor which is a <see cref="T:Xamarin.Forms.VisualElement" />.</value>
         <remarks>Convenient way of accessing the nearest ancestor of an element which is actually represented on screen visually. If this element is a visual element, its bounds are relative to its ParentView.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="Platform">
+      <MemberSignature Language="C#" Value="public Xamarin.Forms.Internals.IPlatform Platform { get; set; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class Xamarin.Forms.Internals.IPlatform Platform" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.Internals.IPlatform</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="PlatformSet">
+      <MemberSignature Language="C#" Value="public event EventHandler PlatformSet;" />
+      <MemberSignature Language="ILAsm" Value=".event class System.EventHandler PlatformSet" />
+      <MemberType>Event</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.EventHandler</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="RealParent">
+      <MemberSignature Language="C#" Value="public Xamarin.Forms.Element RealParent { get; }" />
+      <MemberSignature Language="ILAsm" Value=".property instance class Xamarin.Forms.Element RealParent" />
+      <MemberType>Property</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.Element</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <value>To be added.</value>
+        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="RemoveDynamicResource">
@@ -503,6 +692,79 @@
         </remarks>
       </Docs>
     </Member>
+    <Member MemberName="SetMenu">
+      <MemberSignature Language="C#" Value="public static void SetMenu (Xamarin.Forms.BindableObject bindable, Xamarin.Forms.Menu menu);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetMenu(class Xamarin.Forms.BindableObject bindable, class Xamarin.Forms.Menu menu) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="bindable" Type="Xamarin.Forms.BindableObject" />
+        <Parameter Name="menu" Type="Xamarin.Forms.Menu" />
+      </Parameters>
+      <Docs>
+        <param name="bindable">To be added.</param>
+        <param name="menu">To be added.</param>
+        <summary>To be added.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SetValueFromRenderer">
+      <MemberSignature Language="C#" Value="public void SetValueFromRenderer (Xamarin.Forms.BindableProperty property, object value);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig instance void SetValueFromRenderer(class Xamarin.Forms.BindableProperty property, object value) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="property" Type="Xamarin.Forms.BindableProperty" />
+        <Parameter Name="value" Type="System.Object" />
+      </Parameters>
+      <Docs>
+        <param name="property">For internal use by the Xamarin.Forms platform.</param>
+        <param name="value">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SetValueFromRenderer">
+      <MemberSignature Language="C#" Value="public void SetValueFromRenderer (Xamarin.Forms.BindablePropertyKey property, object value);" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance void SetValueFromRenderer(class Xamarin.Forms.BindablePropertyKey property, object value) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="property" Type="Xamarin.Forms.BindablePropertyKey" />
+        <Parameter Name="value" Type="System.Object" />
+      </Parameters>
+      <Docs>
+        <param name="property">For internal use by the Xamarin.Forms platform.</param>
+        <param name="value">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="StyleId">
       <MemberSignature Language="C#" Value="public string StyleId { get; set; }" />
       <MemberSignature Language="ILAsm" Value=".property instance string StyleId" />
@@ -534,7 +796,6 @@
         <AssemblyVersion>1.3.3.0</AssemblyVersion>
         <AssemblyVersion>1.4.0.0</AssemblyVersion>
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
         <ReturnType>System.Void</ReturnType>
@@ -543,7 +804,7 @@
         <Parameter Name="onchanged" Type="System.Action&lt;System.Object,Xamarin.Forms.ResourcesChangedEventArgs&gt;" />
       </Parameters>
       <Docs>
-        <param name="onchanged">To be added.</param>
+        <param name="onchanged">For internal use by the Xamarin.Forms platform.</param>
         <summary>Internal.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -556,7 +817,6 @@
         <AssemblyVersion>1.3.3.0</AssemblyVersion>
         <AssemblyVersion>1.4.0.0</AssemblyVersion>
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
         <ReturnType>System.Void</ReturnType>
@@ -565,7 +825,7 @@
         <Parameter Name="onchanged" Type="System.Action&lt;System.Object,Xamarin.Forms.ResourcesChangedEventArgs&gt;" />
       </Parameters>
       <Docs>
-        <param name="onchanged">To be added.</param>
+        <param name="onchanged">For internal use by the Xamarin.Forms platform.</param>
         <summary>Internal.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -609,58 +869,6 @@
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
-    <Member MemberName="Xamarin.Forms.IElementController.EffectControlProvider">
-      <MemberSignature Language="C#" Value="Xamarin.Forms.IEffectControlProvider Xamarin.Forms.IElementController.EffectControlProvider { get; set; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance class Xamarin.Forms.IEffectControlProvider Xamarin.Forms.IElementController.EffectControlProvider" />
-      <MemberType>Property</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>Xamarin.Forms.IEffectControlProvider</ReturnType>
-      </ReturnValue>
-      <Docs>
-        <summary>For internal use only.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
-    <Member MemberName="Xamarin.Forms.IElementController.EffectIsAttached">
-      <MemberSignature Language="C#" Value="bool IElementController.EffectIsAttached (string name);" />
-      <MemberSignature Language="ILAsm" Value=".method hidebysig newslot virtual instance bool Xamarin.Forms.IElementController.EffectIsAttached(string name) cil managed" />
-      <MemberType>Method</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>System.Boolean</ReturnType>
-      </ReturnValue>
-      <Parameters>
-        <Parameter Name="name" Type="System.String" />
-      </Parameters>
-      <Docs>
-        <param name="name">To be added.</param>
-        <summary>To be added.</summary>
-        <returns>To be added.</returns>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
-    <Member MemberName="Xamarin.Forms.IElementController.LogicalChildren">
-      <MemberSignature Language="C#" Value="System.Collections.ObjectModel.ReadOnlyCollection&lt;Xamarin.Forms.Element&gt; Xamarin.Forms.IElementController.LogicalChildren { get; }" />
-      <MemberSignature Language="ILAsm" Value=".property instance class System.Collections.ObjectModel.ReadOnlyCollection`1&lt;class Xamarin.Forms.Element&gt; Xamarin.Forms.IElementController.LogicalChildren" />
-      <MemberType>Property</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>System.Collections.ObjectModel.ReadOnlyCollection&lt;Xamarin.Forms.Element&gt;</ReturnType>
-      </ReturnValue>
-      <Docs>
-        <summary>To be added.</summary>
-        <value>To be added.</value>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
     <Member MemberName="Xamarin.Forms.IElementController.SetValueFromRenderer">
       <MemberSignature Language="C#" Value="void IElementController.SetValueFromRenderer (Xamarin.Forms.BindableProperty property, object value);" />
       <MemberSignature Language="ILAsm" Value=".method hidebysig newslot virtual instance void Xamarin.Forms.IElementController.SetValueFromRenderer(class Xamarin.Forms.BindableProperty property, object value) cil managed" />
@@ -680,9 +888,9 @@
         <Parameter Name="value" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="property">To be added.</param>
-        <param name="value">To be added.</param>
-        <summary>Sets a value from a renderer without breaking the binding on a bound property.</summary>
+        <param name="property">For internal use by the Xamarin.Forms platform.</param>
+        <param name="value">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -695,7 +903,6 @@
         <AssemblyVersion>1.3.3.0</AssemblyVersion>
         <AssemblyVersion>1.4.0.0</AssemblyVersion>
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
       <ReturnValue>
         <ReturnType>System.Void</ReturnType>
@@ -705,9 +912,9 @@
         <Parameter Name="value" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="property">To be added.</param>
-        <param name="value">To be added.</param>
-        <summary>Sets a value from a renderer without breaking the binding on a bound property.</summary>
+        <param name="property">For internal use by the Xamarin.Forms platform.</param>
+        <param name="value">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -751,9 +958,9 @@
         <Parameter Name="scopedElement" Type="System.Lazy&lt;System.Object&gt;" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
-        <param name="scopedElement">To be added.</param>
-        <summary>Internal use only.</summary>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
+        <param name="scopedElement">For internal use by the Xamarin.Forms platform.</param>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
@@ -799,9 +1006,9 @@
         <Parameter Name="xmlLineInfo" Type="System.Xml.IXmlLineInfo" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
-        <param name="scopedElement">To be added.</param>
-        <param name="xmlLineInfo">To be added.</param>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
+        <param name="scopedElement">For internal use by the Xamarin.Forms platform.</param>
+        <param name="xmlLineInfo">For internal use by the Xamarin.Forms platform.</param>
         <summary>Internal.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -845,7 +1052,7 @@
         <Parameter Name="name" Type="System.String" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
         <summary>For internal use only.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
@@ -867,8 +1074,8 @@
         <Parameter Name="scopedElement" Type="System.Object" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
-        <param name="scopedElement">To be added.</param>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
+        <param name="scopedElement">For internal use by the Xamarin.Forms platform.</param>
         <summary>For internal use only.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -881,6 +1088,11 @@
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
         <AssemblyVersion>2.0.0.0</AssemblyVersion>
       </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.Obsolete</AttributeName>
+        </Attribute>
+      </Attributes>
       <ReturnValue>
         <ReturnType>System.Void</ReturnType>
       </ReturnValue>
@@ -890,9 +1102,9 @@
         <Parameter Name="xmlLineInfo" Type="System.Xml.IXmlLineInfo" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
-        <param name="scopedElement">To be added.</param>
-        <param name="xmlLineInfo">To be added.</param>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
+        <param name="scopedElement">For internal use by the Xamarin.Forms platform.</param>
+        <param name="xmlLineInfo">For internal use by the Xamarin.Forms platform.</param>
         <summary>For internal use only.</summary>
         <remarks>To be added.</remarks>
       </Docs>
@@ -912,7 +1124,7 @@
         <Parameter Name="name" Type="System.String" />
       </Parameters>
       <Docs>
-        <param name="name">To be added.</param>
+        <param name="name">For internal use by the Xamarin.Forms platform.</param>
         <summary>For internal use only.</summary>
         <remarks>To be added.</remarks>
       </Docs>

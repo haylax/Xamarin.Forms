@@ -5,11 +5,12 @@ using Xamarin.Forms.CustomAttributes;
 using Xamarin.Forms.Internals;
 
 #if UITEST
+using Xamarin.Forms.Core.UITests;
 using NUnit.Framework;
 using Xamarin.UITest;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Github, 206, "ViewCell with Label's text does not resize when value is changed", PlatformAffected.iOS)]
@@ -37,9 +38,11 @@ namespace Xamarin.Forms.Controls
 
 			RunningApp.Screenshot ("All elements exist");
 
-			var scrollRect = RunningApp.Query (q => q.Raw ("* index:0"))[0].Rect;
+#if !__MACOS__
+			var scrollRect = RunningApp.RootViewRect();
 			Xamarin.Forms.Core.UITests.Gestures.ScrollForElement (RunningApp, "* marked:'9'", new Xamarin.Forms.Core.UITests.Drag (scrollRect, Xamarin.Forms.Core.UITests.Drag.Direction.BottomToTop, Xamarin.Forms.Core.UITests.Drag.DragLength.Long));
 			RunningApp.Screenshot ("I see 9");
+#endif
 
 			RunningApp.Tap (q => q.Marked ("9"));
 			RunningApp.WaitForNoElement (q => q.Marked ("9"));

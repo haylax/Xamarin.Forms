@@ -5,7 +5,8 @@ using System.Xml;
 
 namespace Xamarin.Forms.Xaml
 {
-	[ContentProperty("Member")]
+	[ContentProperty(nameof(Member))]
+	[ProvideCompiled("Xamarin.Forms.Build.Tasks.StaticExtension")]
 	public class StaticExtension : IMarkupExtension
 	{
 		public string Member { get; set; }
@@ -16,7 +17,7 @@ namespace Xamarin.Forms.Xaml
 			IXmlLineInfo lineInfo;
 
 			if (serviceProvider == null)
-				throw new ArgumentNullException("serviceProvider");
+				throw new ArgumentNullException(nameof(serviceProvider));
 			var typeResolver = serviceProvider.GetService(typeof (IXamlTypeResolver)) as IXamlTypeResolver;
 			if (typeResolver == null)
 				throw new ArgumentException("No IXamlTypeResolver in IServiceProvider");
@@ -44,7 +45,7 @@ namespace Xamarin.Forms.Xaml
 
 			lineInfoProvider = serviceProvider.GetService(typeof (IXmlLineInfoProvider)) as IXmlLineInfoProvider;
 			lineInfo = (lineInfoProvider != null) ? lineInfoProvider.XmlLineInfo : new XmlLineInfo();
-			throw new XamlParseException(String.Format("No static member found for {0}", Member), lineInfo);
+			throw new XamlParseException($"No static member found for {Member}", lineInfo);
 		}
 	}
 }

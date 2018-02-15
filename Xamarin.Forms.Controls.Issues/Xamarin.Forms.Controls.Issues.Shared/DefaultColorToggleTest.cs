@@ -6,19 +6,19 @@ using Xamarin.Forms.Internals;
 namespace Xamarin.Forms.Controls
 {
 	[Preserve (AllMembers=true)]
-	[Issue (IssueTracker.None, 0, "Default colors toggle test", PlatformAffected.All)]
+	[Issue (IssueTracker.None, 9906753, "Default colors toggle test", PlatformAffected.All)]
 	public class DefaultColorToggleTest : TabbedPage
 	{
 		public DefaultColorToggleTest()
 		{
 			Title = "Test Color Toggle Page";
 
+			Children.Add(EntryPage());
 			Children.Add(PickerPage());
 			Children.Add(DatePickerPage());
 			Children.Add(TimePickerPage());
 			Children.Add(ButtonPage());
 			Children.Add(LabelPage());
-			Children.Add(EntryPage());
 			Children.Add(PasswordPage());
 			Children.Add(SearchBarPage());
 		}
@@ -324,7 +324,7 @@ namespace Xamarin.Forms.Controls
 
 			return new ContentPage {
 				Title = "TimePicker",
-				Padding = new Thickness(0, Device.OnPlatform(20, 0, 0), 0, Device.OnPlatform(00, 0, 0)),
+				Padding = Device.RuntimePlatform == Device.iOS ? new Thickness(0, 20, 0, 0) : new Thickness(0),
 				Content = new StackLayout {
 					VerticalOptions = LayoutOptions.Fill,
 					HorizontalOptions = LayoutOptions.Fill,
@@ -389,7 +389,7 @@ namespace Xamarin.Forms.Controls
 
 			return new ContentPage {
 				Title = "DatePicker",
-				Padding = new Thickness(0, Device.OnPlatform(20, 0, 0), 0, Device.OnPlatform(00, 0, 0)),
+				Padding = Device.RuntimePlatform == Device.iOS ? new Thickness(0, 20, 0, 0) : new Thickness(0),
 				Content = new StackLayout {
 					VerticalOptions = LayoutOptions.Fill,
 					HorizontalOptions = LayoutOptions.Fill,
@@ -457,7 +457,7 @@ namespace Xamarin.Forms.Controls
 
 			return new ContentPage {
 				Title = "Picker",
-				Padding = new Thickness(0, Device.OnPlatform(20, 0, 0), 0, Device.OnPlatform(00, 0, 0)),
+				Padding = Device.RuntimePlatform == Device.iOS ? new Thickness(0, 20, 0, 0) : new Thickness(0),
 				Content = new StackLayout {
 					VerticalOptions = LayoutOptions.Fill,
 					HorizontalOptions = LayoutOptions.Fill,

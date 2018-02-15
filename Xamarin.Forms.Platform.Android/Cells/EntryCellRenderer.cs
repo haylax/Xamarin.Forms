@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using Android.Content;
+using Android.Text;
+using Android.Text.Method;
 using Android.Views;
 
 namespace Xamarin.Forms.Platform.Android
@@ -27,6 +29,7 @@ namespace Xamarin.Forms.Platform.Android
 			UpdateText();
 			UpdateIsEnabled();
 			UpdateHeight();
+			UpdateFlowDirection();
 
 			_view.TextChanged = OnTextChanged;
 			_view.EditingCompleted = OnEditingCompleted;
@@ -54,6 +57,19 @@ namespace Xamarin.Forms.Platform.Android
 				UpdateIsEnabled();
 			else if (e.PropertyName == "RenderHeight")
 				UpdateHeight();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+			{
+				UpdateFlowDirection();
+				UpdateHorizontalTextAlignment();
+			}
+		}
+
+		protected virtual NumberKeyListener GetDigitsKeyListener(InputTypes inputTypes)
+		{
+			// Override this in a custom renderer to use a different NumberKeyListener 
+			// or to filter out input types you don't want to allow 
+			// (e.g., inputTypes &= ~InputTypes.NumberFlagSigned to disallow the sign)
+			return LocalizedDigitsKeyListener.Create(inputTypes);
 		}
 
 		void OnEditingCompleted()
@@ -76,7 +92,7 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateHorizontalTextAlignment()
 		{
 			var entryCell = (EntryCell)Cell;
-			_view.EditText.Gravity = entryCell.HorizontalTextAlignment.ToHorizontalGravityFlags();
+			_view.EditText.UpdateHorizontalAlignment(entryCell.HorizontalTextAlignment);
 		}
 
 		void UpdateIsEnabled()
@@ -88,7 +104,13 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateKeyboard()
 		{
 			var entryCell = (EntryCell)Cell;
-			_view.EditText.InputType = entryCell.Keyboard.ToInputType();
+			var keyboard = entryCell.Keyboard;
+			_view.EditText.InputType = keyboard.ToInputType();
+
+			if (keyboard == Keyboard.Numeric)
+			{
+				_view.EditText.KeyListener = GetDigitsKeyListener(_view.EditText.InputType);
+			}
 		}
 
 		void UpdateLabel()
@@ -99,6 +121,11 @@ namespace Xamarin.Forms.Platform.Android
 		void UpdateLabelColor()
 		{
 			_view.SetLabelTextColor(((EntryCell)Cell).LabelColor, global::Android.Resource.Color.PrimaryTextDark);
+		}
+
+		void UpdateFlowDirection()
+		{
+			_view.UpdateFlowDirection(ParentView);
 		}
 
 		void UpdatePlaceholder()

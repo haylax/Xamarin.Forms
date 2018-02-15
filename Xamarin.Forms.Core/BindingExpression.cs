@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using Xamarin.Forms.Internals;
+using System.Runtime.CompilerServices;
 
 namespace Xamarin.Forms
 {
@@ -21,9 +23,9 @@ namespace Xamarin.Forms
 		internal BindingExpression(BindingBase binding, string path)
 		{
 			if (binding == null)
-				throw new ArgumentNullException("binding");
+				throw new ArgumentNullException(nameof(binding));
 			if (path == null)
-				throw new ArgumentNullException("path");
+				throw new ArgumentNullException(nameof(path));
 
 			Binding = binding;
 			Path = path;
@@ -104,10 +106,10 @@ namespace Xamarin.Forms
 		void ApplyCore(object sourceObject, BindableObject target, BindableProperty property, bool fromTarget = false)
 		{
 			BindingMode mode = Binding.GetRealizedMode(_targetProperty);
-			if (mode == BindingMode.OneWay && fromTarget)
+			if ((mode == BindingMode.OneWay || mode == BindingMode.OneTime) && fromTarget)
 				return;
 
-			bool needsGetter = (mode == BindingMode.TwoWay && !fromTarget) || mode == BindingMode.OneWay;
+			bool needsGetter = (mode == BindingMode.TwoWay && !fromTarget) || mode == BindingMode.OneWay || mode == BindingMode.OneTime;
 			bool needsSetter = !needsGetter && ((mode == BindingMode.TwoWay && fromTarget) || mode == BindingMode.OneWayToSource);
 
 			object current = sourceObject;
@@ -170,7 +172,7 @@ namespace Xamarin.Forms
 					return;
 				}
 
-				target.SetValueCore(property, value, BindableObject.SetValueFlags.ClearDynamicResource, BindableObject.SetValuePrivateFlags.Default | BindableObject.SetValuePrivateFlags.Converted);
+				target.SetValueCore(property, value, SetValueFlags.ClearDynamicResource, BindableObject.SetValuePrivateFlags.Default | BindableObject.SetValuePrivateFlags.Converted);
 			}
 			else if (needsSetter && part.LastSetter != null && current != null)
 			{
@@ -289,8 +291,17 @@ namespace Xamarin.Forms
 				part.IndexerName = indexerName;
 
 				property = sourceType.GetDeclaredProperty(indexerName);
-				if (property == null)
+				if (property == null) //is the indexer defined on the base class?
 					property = sourceType.BaseType.GetProperty(indexerName);
+				if (property == null) //is the indexer defined on implemented interface ?
+				{
+					foreach (var implementedInterface in sourceType.ImplementedInterfaces)
+					{
+						property = implementedInterface.GetProperty(indexerName);
+						if (property != null)
+							break;
+					}
+				}
 
 				if (property != null)
 				{
@@ -315,11 +326,7 @@ namespace Xamarin.Forms
 				}
 			}
 			else
-			{
-				property = sourceType.GetDeclaredProperty(part.Content);
-				if (property == null)
-					property = sourceType.BaseType.GetProperty(part.Content);
-			}
+				property = sourceType.GetDeclaredProperty(part.Content) ?? sourceType.BaseType?.GetProperty(part.Content);
 
 			if (property != null)
 			{
@@ -336,6 +343,7 @@ namespace Xamarin.Forms
 						if (bindablePropertyField != null && bindablePropertyField.FieldType == typeof(BindableProperty) && sourceType.ImplementedInterfaces.Contains(typeof(IElementController)))
 						{
 							MethodInfo setValueMethod = null;
+#if NETSTANDARD1_0
 							foreach (MethodInfo m in sourceType.AsType().GetRuntimeMethods())
 							{
 								if (m.Name.EndsWith("IElementController.SetValueFromRenderer"))
@@ -348,6 +356,9 @@ namespace Xamarin.Forms
 									}
 								}
 							}
+#else
+							setValueMethod = typeof(IElementController).GetMethod("SetValueFromRenderer", new[] { typeof(BindableProperty), typeof(object) });
+#endif
 							if (setValueMethod != null)
 							{
 								part.LastSetter = setValueMethod;
@@ -357,8 +368,36 @@ namespace Xamarin.Forms
 						}
 					}
 				}
+#if !NETSTANDARD1_0
+				TupleElementNamesAttribute tupleEltNames;
+				if (   property != null
+					&& part.NextPart != null
+					&& property.PropertyType.IsGenericType
+					&& (   property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,,>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,,,>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,,>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,,,>)
+						|| property.PropertyType.GetGenericTypeDefinition() == typeof(ValueTuple<,,,,,,,>))
+					&& (tupleEltNames = property.GetCustomAttribute(typeof(TupleElementNamesAttribute)) as TupleElementNamesAttribute) != null)
+				{
+					//modify the nextPart to access the tuple item via the ITuple indexer
+					var nextPart = part.NextPart;
+					var name = nextPart.Content;
+					var index = tupleEltNames.TransformNames.IndexOf(name);
+					if (index >= 0)
+					{
+						nextPart.IsIndexer = true;
+						nextPart.Content = index.ToString();
+					}
+				}
+#endif
 			}
+
 		}
+		static Type[] DecimalTypes = new[] { typeof(float), typeof(decimal), typeof(double) };
 
 		bool TryConvert(BindingExpressionPart part, ref object value, Type convertTo, bool toTarget)
 		{
@@ -370,6 +409,16 @@ namespace Xamarin.Forms
 			object original = value;
 			try
 			{
+				var stringValue = value as string ?? string.Empty;
+				// see: https://bugzilla.xamarin.com/show_bug.cgi?id=32871
+				// do not canonicalize "*.[.]"; "1." should not update bound BindableProperty
+				if (stringValue.EndsWith(".") && DecimalTypes.Contains(convertTo))
+					throw new FormatException();
+
+				// do not canonicalize "-0"; user will likely enter a period after "-0"
+				if (stringValue == "-0" && DecimalTypes.Contains(convertTo))
+					throw new FormatException();
+
 				value = Convert.ChangeType(value, convertTo, CultureInfo.InvariantCulture);
 				return true;
 			}
@@ -406,49 +455,46 @@ namespace Xamarin.Forms
 			public object Source { get; private set; }
 		}
 
-		class WeakPropertyChangedProxy
+		internal class WeakPropertyChangedProxy
 		{
-			WeakReference _source, _listener;
+			readonly WeakReference<INotifyPropertyChanged> _source = new WeakReference<INotifyPropertyChanged>(null);
+			readonly WeakReference<PropertyChangedEventHandler> _listener = new WeakReference<PropertyChangedEventHandler>(null);
+			readonly PropertyChangedEventHandler _handler;
+			internal WeakReference<INotifyPropertyChanged> Source => _source;
 
-			public WeakPropertyChangedProxy(INotifyPropertyChanged source, PropertyChangedEventHandler listener)
+			public WeakPropertyChangedProxy()
 			{
-				source.PropertyChanged += OnPropertyChanged;
-				_source = new WeakReference(source);
-				_listener = new WeakReference(listener);
+				_handler = new PropertyChangedEventHandler(OnPropertyChanged);
+			}
+
+			public WeakPropertyChangedProxy(INotifyPropertyChanged source, PropertyChangedEventHandler listener) : this()
+			{
+				SubscribeTo(source, listener);
+			}
+
+			public void SubscribeTo(INotifyPropertyChanged source, PropertyChangedEventHandler listener)
+			{
+				source.PropertyChanged += _handler;
+				_source.SetTarget(source);
+				_listener.SetTarget(listener);
 			}
 
 			public void Unsubscribe()
 			{
-				if (_source != null)
-				{
-					var source = _source.Target as INotifyPropertyChanged;
-					if (source != null)
-					{
-						source.PropertyChanged -= OnPropertyChanged;
-					}
-					_source = null;
-					_listener = null;
-				}
+				INotifyPropertyChanged source;
+				if (_source.TryGetTarget(out source) && source != null)
+					source.PropertyChanged -= _handler;
+				_source.SetTarget(null);
+				_listener.SetTarget(null);
 			}
 
-			private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
+			void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
 			{
-				if (_listener != null)
-				{
-					var handler = _listener.Target as PropertyChangedEventHandler;
-					if (handler != null)
-					{
-						handler(sender, e);
-					}
-					else
-					{
-						Unsubscribe();
-					}
-				}
+				PropertyChangedEventHandler handler;
+				if (_listener.TryGetTarget(out handler) && handler != null)
+					handler(sender, e);
 				else
-				{
 					Unsubscribe();
-				}
 			}
 		}
 
@@ -470,7 +516,14 @@ namespace Xamarin.Forms
 
 			public void Subscribe(INotifyPropertyChanged handler)
 			{
-				// If we're reapplying, we don't want to double subscribe
+				INotifyPropertyChanged source;
+				if (_listener != null && _listener.Source.TryGetTarget(out source) && ReferenceEquals(handler, source))
+				{
+					// Already subscribed
+					return;
+				}
+
+				// Clear out the old subscription if necessary
 				Unsubscribe();
 
 				_listener = new WeakPropertyChangedProxy(handler, _changeHandler);
@@ -490,13 +543,13 @@ namespace Xamarin.Forms
 
 			public object BindablePropertyField { get; set; }
 
-			public string Content { get; }
+			public string Content { get; internal set; }
 
 			public string IndexerName { get; set; }
 
 			public bool IsBindablePropertySetter { get; set; }
 
-			public bool IsIndexer { get; }
+			public bool IsIndexer { get; internal set; }
 
 			public bool IsSelf { get; }
 

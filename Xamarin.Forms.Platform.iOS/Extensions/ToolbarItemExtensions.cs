@@ -1,23 +1,9 @@
-using System;
-using System.Drawing;
 using System.ComponentModel;
-#if __UNIFIED__
 using CoreGraphics;
 using UIKit;
-#else
-using MonoTouch.CoreGraphics;
-using MonoTouch.UIKit;
-#endif
-#if __UNIFIED__
+using PointF = CoreGraphics.CGPoint;
 using RectangleF = CoreGraphics.CGRect;
 using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -33,20 +19,18 @@ namespace Xamarin.Forms.Platform.iOS
 			readonly bool _forceName;
 			readonly ToolbarItem _item;
 
-			IMenuItemController Controller => _item;
-
 			public PrimaryToolbarItem(ToolbarItem item, bool forceName)
 			{
 				_forceName = forceName;
 				_item = item;
 
-				if (!string.IsNullOrEmpty(item.Icon) && !forceName)
+				if (!string.IsNullOrEmpty(item.Icon?.File) && !forceName)
 					UpdateIconAndStyle();
 				else
 					UpdateTextAndStyle();
 				UpdateIsEnabled();
 
-				Clicked += (sender, e) => Controller.Activate();
+				Clicked += (sender, e) => _item.Activate();
 				item.PropertyChanged += OnPropertyChanged;
 
 				if (item != null && !string.IsNullOrEmpty(item.AutomationId))
@@ -62,18 +46,18 @@ namespace Xamarin.Forms.Platform.iOS
 
 			void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
 			{
-				if (e.PropertyName == Controller.IsEnabledPropertyName)
+				if (e.PropertyName == _item.IsEnabledPropertyName)
 					UpdateIsEnabled();
 				else if (e.PropertyName == MenuItem.TextProperty.PropertyName)
 				{
-					if (string.IsNullOrEmpty(_item.Icon) || _forceName)
+					if (string.IsNullOrEmpty(_item.Icon?.File) || _forceName)
 						UpdateTextAndStyle();
 				}
 				else if (e.PropertyName == MenuItem.IconProperty.PropertyName)
 				{
 					if (!_forceName)
 					{
-						if (!string.IsNullOrEmpty(_item.Icon))
+						if (!string.IsNullOrEmpty(_item.Icon?.File))
 							UpdateIconAndStyle();
 						else
 							UpdateTextAndStyle();
@@ -81,16 +65,17 @@ namespace Xamarin.Forms.Platform.iOS
 				}
 			}
 
-			void UpdateIconAndStyle()
+			async void UpdateIconAndStyle()
 			{
-				var image = UIImage.FromBundle(_item.Icon);
+				var source = Internals.Registrar.Registered.GetHandlerForObject<IImageSourceHandler>(_item.Icon);
+				var image = await source.LoadImageAsync(_item.Icon);
 				Image = image;
 				Style = UIBarButtonItemStyle.Plain;
 			}
 
 			void UpdateIsEnabled()
 			{
-				Enabled = Controller.IsEnabled;
+				Enabled = _item.IsEnabled;
 			}
 
 			void UpdateTextAndStyle()
@@ -104,7 +89,6 @@ namespace Xamarin.Forms.Platform.iOS
 		sealed class SecondaryToolbarItem : UIBarButtonItem
 		{
 			readonly ToolbarItem _item;
-			IMenuItemController Controller => _item;
 
 			public SecondaryToolbarItem(ToolbarItem item) : base(new SecondaryToolbarItemContent())
 			{
@@ -113,7 +97,7 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateIcon();
 				UpdateIsEnabled();
 
-				((SecondaryToolbarItemContent)CustomView).TouchUpInside += (sender, e) => Controller.Activate();
+				((SecondaryToolbarItemContent)CustomView).TouchUpInside += (sender, e) => _item.Activate();
 				item.PropertyChanged += OnPropertyChanged;
 
 				if (item != null && !string.IsNullOrEmpty(item.AutomationId))
@@ -133,18 +117,24 @@ namespace Xamarin.Forms.Platform.iOS
 					UpdateText();
 				else if (e.PropertyName == MenuItem.IconProperty.PropertyName)
 					UpdateIcon();
-				else if (e.PropertyName == Controller.IsEnabledPropertyName)
+				else if (e.PropertyName == _item.IsEnabledPropertyName)
 					UpdateIsEnabled();
 			}
 
-			void UpdateIcon()
+			async void UpdateIcon()
 			{
-				((SecondaryToolbarItemContent)CustomView).Image = string.IsNullOrEmpty(_item.Icon) ? null : new UIImage(_item.Icon);
+				UIImage image = null;
+				if (!string.IsNullOrEmpty(_item.Icon?.File))
+				{
+					var source = Internals.Registrar.Registered.GetHandlerForObject<IImageSourceHandler>(_item.Icon);
+					image = await source.LoadImageAsync(_item.Icon);
+				}
+				((SecondaryToolbarItemContent)CustomView).Image = image;
 			}
 
 			void UpdateIsEnabled()
 			{
-				((UIControl)CustomView).Enabled = Controller.IsEnabled;
+				((UIControl)CustomView).Enabled = _item.IsEnabled;
 			}
 
 			void UpdateText()
@@ -157,7 +147,7 @@ namespace Xamarin.Forms.Platform.iOS
 				readonly UIImageView _imageView;
 				readonly UILabel _label;
 
-				public SecondaryToolbarItemContent() : base(new RectangleF(0, 0, 75, 20))
+				public SecondaryToolbarItemContent()
 				{
 					BackgroundColor = UIColor.Clear;
 					_imageView = new UIImageView { BackgroundColor = UIColor.Clear };

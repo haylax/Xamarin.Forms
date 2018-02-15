@@ -23,7 +23,7 @@ namespace Xamarin.Forms.Controls
 			{
 				var bvBackground = new Frame {
 					Content = new Label { Text = "" },
-					OutlineColor = Color.FromRgb (0x06, 0x68, 0xCF),
+					BorderColor = Color.FromRgb (0x06, 0x68, 0xCF),
 					BackgroundColor = Color.FromRgba (0f, 0f, 0f, 0.4f),
 					HasShadow = true
 				};
@@ -235,12 +235,10 @@ namespace Xamarin.Forms.Controls
 					Forms.Constraint.RelativeToParent ((parent) =>
 						parent.Height));
 
-				rl.Children.Add (addFrame,
-					Forms.Constraint.RelativeToParent ((parent) =>
-						(parent.Width * .25) / 2),
-					Forms.Constraint.Constant (Device.OnPlatform (60, 40, 40)),
-					Forms.Constraint.RelativeToParent ((parent) =>
-						parent.Width * .75));
+				rl.Children.Add(addFrame,
+					Forms.Constraint.RelativeToParent((parent) => (parent.Width * .25) / 2),
+					Forms.Constraint.Constant(Device.RuntimePlatform == Device.iOS ? 60 : 40),
+					Forms.Constraint.RelativeToParent((parent) => parent.Width * .75));
 
 				Content = rl;
 			}

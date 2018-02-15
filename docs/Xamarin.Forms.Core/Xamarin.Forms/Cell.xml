@@ -195,6 +195,22 @@ Content = new TableView
         <remarks>The context gesture on the iOS platform is a left swipe. For Android and Windows Phone operating systems, the context gesture is a press and hold.</remarks>
       </Docs>
     </Member>
+    <Member MemberName="DefaultCellHeight">
+      <MemberSignature Language="C#" Value="public const int DefaultCellHeight = 40;" />
+      <MemberSignature Language="ILAsm" Value=".field public static literal int32 DefaultCellHeight = (40)" />
+      <MemberType>Field</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Int32</ReturnType>
+      </ReturnValue>
+      <MemberValue>40</MemberValue>
+      <Docs>
+        <summary>The default height of cells.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="Disappearing">
       <MemberSignature Language="C#" Value="public event EventHandler Disappearing;" />
       <MemberSignature Language="ILAsm" Value=".event class System.EventHandler Disappearing" />
@@ -232,6 +248,26 @@ Content = new TableView
         <remarks>
           <para>Developers can call this method to update the cell's size, even if the cell is currently visible. Developers should note that this operation can be expensive.</para>
         </remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="ForceUpdateSizeRequested">
+      <MemberSignature Language="C#" Value="public event EventHandler ForceUpdateSizeRequested;" />
+      <MemberSignature Language="ILAsm" Value=".event class System.EventHandler ForceUpdateSizeRequested" />
+      <MemberType>Event</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.EventHandler</ReturnType>
+      </ReturnValue>
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
       </Docs>
     </Member>
     <Member MemberName="HasContextActions">
@@ -488,6 +524,48 @@ Content = new TableView
         </remarks>
       </Docs>
     </Member>
+    <Member MemberName="SendAppearing">
+      <MemberSignature Language="C#" Value="public void SendAppearing ();" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance void SendAppearing() cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters />
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SendDisappearing">
+      <MemberSignature Language="C#" Value="public void SendDisappearing ();" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance void SendDisappearing() cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <Attributes>
+        <Attribute>
+          <AttributeName>System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)</AttributeName>
+        </Attribute>
+      </Attributes>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters />
+      <Docs>
+        <summary>For internal use by the Xamarin.Forms platform.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="Tapped">
       <MemberSignature Language="C#" Value="public event EventHandler Tapped;" />
       <MemberSignature Language="ILAsm" Value=".event class System.EventHandler Tapped" />
@@ -508,38 +586,6 @@ Content = new TableView
         <summary>Occurs when the Cell is Tapped.</summary>
         <remarks>
         </remarks>
-      </Docs>
-    </Member>
-    <Member MemberName="Xamarin.Forms.ICellController.SendAppearing">
-      <MemberSignature Language="C#" Value="void ICellController.SendAppearing ();" />
-      <MemberSignature Language="ILAsm" Value=".method hidebysig newslot virtual instance void Xamarin.Forms.ICellController.SendAppearing() cil managed" />
-      <MemberType>Method</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>System.Void</ReturnType>
-      </ReturnValue>
-      <Parameters />
-      <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
-      </Docs>
-    </Member>
-    <Member MemberName="Xamarin.Forms.ICellController.SendDisappearing">
-      <MemberSignature Language="C#" Value="void ICellController.SendDisappearing ();" />
-      <MemberSignature Language="ILAsm" Value=".method hidebysig newslot virtual instance void Xamarin.Forms.ICellController.SendDisappearing() cil managed" />
-      <MemberType>Method</MemberType>
-      <AssemblyInfo>
-        <AssemblyVersion>2.0.0.0</AssemblyVersion>
-      </AssemblyInfo>
-      <ReturnValue>
-        <ReturnType>System.Void</ReturnType>
-      </ReturnValue>
-      <Parameters />
-      <Docs>
-        <summary>To be added.</summary>
-        <remarks>To be added.</remarks>
       </Docs>
     </Member>
   </Members>

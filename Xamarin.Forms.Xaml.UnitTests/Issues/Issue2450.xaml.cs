@@ -5,6 +5,8 @@ using Xamarin.Forms.Core.UnitTests;
 
 namespace Xamarin.Forms.Xaml.UnitTests
 {
+	//this covers Issue2125 as well
+	[XamlCompilation(XamlCompilationOptions.Skip)]
 	public partial class Issue2450 : ContentPage
 	{
 		public Issue2450 ()
@@ -27,10 +29,11 @@ namespace Xamarin.Forms.Xaml.UnitTests
 			}
 
 			[TestCase (false)]
-			[TestCase (true)]
 			public void ThrowMeaningfulExceptionOnDuplicateXName (bool useCompiledXaml)
 			{
-				Assert.Throws (new XamlParseExceptionConstraint (8, 10, m => m == "An element with the name \"label0\" already exists in this NameScope"), () => new Issue2450 (useCompiledXaml));
+				var layout = new Issue2450(useCompiledXaml);
+				Assert.Throws(new XamlParseExceptionConstraint(11, 13, m => m == "An element with the name \"label0\" already exists in this NameScope"),
+							  () => (layout.Resources ["foo"] as Forms.DataTemplate).CreateContent());
 			}
 		}
 	}

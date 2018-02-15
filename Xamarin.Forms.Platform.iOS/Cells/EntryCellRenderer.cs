@@ -1,21 +1,7 @@
 using System;
 using System.ComponentModel;
-using System.Drawing;
-#if __UNIFIED__
 using UIKit;
-#else
-using MonoTouch.UIKit;
-#endif
-#if __UNIFIED__
 using RectangleF = CoreGraphics.CGRect;
-using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -77,6 +63,8 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateHorizontalTextAlignment(realCell, entryCell);
 			else if (e.PropertyName == Cell.IsEnabledProperty.PropertyName)
 				UpdateIsEnabled(realCell, entryCell);
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateHorizontalTextAlignment(realCell, entryCell);
 		}
 
 		static void OnKeyBoardDoneButtonPressed(object sender, EventArgs e)
@@ -97,7 +85,8 @@ namespace Xamarin.Forms.Platform.iOS
 
 		static void UpdateHorizontalTextAlignment(EntryCellTableViewCell cell, EntryCell entryCell)
 		{
-			cell.TextField.TextAlignment = entryCell.HorizontalTextAlignment.ToNativeTextAlignment();
+			IViewController viewController = entryCell.Parent as View;
+			cell.TextField.TextAlignment = entryCell.HorizontalTextAlignment.ToNativeTextAlignment(viewController?.EffectiveFlowDirection ?? default(EffectiveFlowDirection));
 		}
 
 		static void UpdateIsEnabled(EntryCellTableViewCell cell, EntryCell entryCell)

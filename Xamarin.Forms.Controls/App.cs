@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
+using Xamarin.Forms.Internals;
 using Xamarin.Forms.PlatformConfiguration;
+using Xamarin.Forms.PlatformConfiguration.iOSSpecific;
 using Xamarin.Forms.PlatformConfiguration.WindowsSpecific;
 
 namespace Xamarin.Forms.Controls
 {
+
 	public class App : Application
 	{
 		public const string AppName = "XamarinFormsControls";
@@ -21,14 +24,40 @@ namespace Xamarin.Forms.Controls
 		static Dictionary<string, string> s_config;
 		readonly ITestCloudService _testCloudService;
 
+		public const string DefaultMainPageId = "ControlGalleryMainPage";
+
 		public App()
 		{
 			_testCloudService = DependencyService.Get<ITestCloudService>();
-			InitInsights();
+			
+			SetMainPage(CreateDefaultMainPage());
 
-			MainPage = new MasterDetailPage
+			//// Uncomment to verify that there is no gray screen displayed between the blue splash and red MasterDetailPage.
+			//SetMainPage(new Bugzilla44596SplashPage(() =>
+			//{
+			//	var newTabbedPage = new TabbedPage();
+			//	newTabbedPage.Children.Add(new ContentPage { BackgroundColor = Color.Red, Content = new Label { Text = "yay" } });
+			//	MainPage = new MasterDetailPage
+			//	{
+			//		Master = new ContentPage { Title = "Master", BackgroundColor = Color.Red },
+			//		Detail = newTabbedPage
+			//	};
+			//}));
+
+			//// Uncomment to verify that there is no crash when switching MainPage from MDP inside NavPage
+			//SetMainPage(new Bugzilla45702());
+		}
+
+		public Page CreateDefaultMainPage()
+		{
+			var layout = new StackLayout { BackgroundColor = Color.Red };
+			layout.Children.Add(new Label { Text ="This is master Page" });
+			var master = new ContentPage { Title = "Master", Content = layout,  BackgroundColor = Color.SkyBlue };
+			master.On<iOS>().SetUseSafeArea(true);
+			return new MasterDetailPage
 			{
-				Master = new ContentPage { Title = "Master", BackgroundColor = Color.Red },
+				AutomationId = DefaultMainPageId,
+				Master = master,
 				Detail = CoreGallery.GetMainPage()
 			};
 		}
@@ -74,20 +103,6 @@ namespace Xamarin.Forms.Controls
 			}
 		}
 
-		public static string InsightsApiKey
-		{
-			get
-			{
-				if (s_insightsKey == null)
-				{
-					string key = Config["InsightsApiKey"];
-					s_insightsKey = string.IsNullOrEmpty(key) ? Insights.DebugModeKey : key;
-				}
-
-				return s_insightsKey;
-			}
-		}
-
 		public static ContentPage MenuPage { get; set; }
 
 		public void SetMainPage(Page rootPage)
@@ -100,18 +115,6 @@ namespace Xamarin.Forms.Controls
 			assemblystring = typeof(App).AssemblyQualifiedName.Split(',')[1].Trim();
 			var assemblyname = new AssemblyName(assemblystring);
 			return Assembly.Load(assemblyname);
-		}
-
-		void InitInsights()
-		{
-			if (Insights.IsInitialized)
-			{
-				Insights.ForceDataTransmission = true;
-				if (_testCloudService != null && _testCloudService.IsOnTestCloud())
-					Insights.Identify(_testCloudService.GetTestCloudDevice(), "Name", _testCloudService.GetTestCloudDeviceName());
-				else
-					Insights.Identify("DemoUser", "Name", "Demo User");
-			}
 		}
 
 		static void LoadConfig()
@@ -140,6 +143,44 @@ namespace Xamarin.Forms.Controls
 			using (var reader = new StreamReader(stream))
 				text = await reader.ReadToEndAsync();
 			return text;
+		}
+
+		public bool NavigateToTestPage(string test)
+		{
+			try
+			{
+				// Create an instance of the main page
+				var root = CreateDefaultMainPage();
+
+				// Set up a delegate to handle the navigation to the test page
+				EventHandler toTestPage = null;
+
+				toTestPage = delegate(object sender, EventArgs e) 
+				{
+					Current.MainPage.Navigation.PushModalAsync(TestCases.GetTestCases());
+					TestCases.TestCaseScreen.PageToAction[test]();
+					Current.MainPage.Appearing -= toTestPage;
+				};
+
+				// And set that delegate to run once the main page appears
+				root.Appearing += toTestPage;
+
+				SetMainPage(root);
+
+				return true;
+			}
+			catch (Exception ex) 
+			{
+				Log.Warning("UITests", $"Error attempting to navigate directly to {test}: {ex}");
+
+			}
+
+			return false;
+		}
+		
+		public void Reset()
+		{
+			SetMainPage(CreateDefaultMainPage());
 		}
 	}
 }

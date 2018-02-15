@@ -1,4 +1,5 @@
 using System;
+using Android.Content;
 using Android.Widget;
 using ASwitch = Android.Widget.Switch;
 
@@ -6,6 +7,12 @@ namespace Xamarin.Forms.Platform.Android
 {
 	public class SwitchRenderer : ViewRenderer<Switch, ASwitch>, CompoundButton.IOnCheckedChangeListener
 	{
+		public SwitchRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use SwitchRenderer(Context) instead.")]
 		public SwitchRenderer()
 		{
 			AutoPackage = false;
@@ -25,8 +32,6 @@ namespace Xamarin.Forms.Platform.Android
 				int width = widthConstraint;
 				if (widthConstraint <= 0)
 					width = (int)Context.GetThemeAttributeDp(global::Android.Resource.Attribute.SwitchMinWidth);
-				else if (widthConstraint <= 0)
-					width = 100;
 
 				sizeConstraint = new SizeRequest(new Size(width, sizeConstraint.Request.Height), new Size(width, sizeConstraint.Minimum.Height));
 			}

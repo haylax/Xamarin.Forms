@@ -1,16 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 
 namespace Xamarin.Forms
 {
-	internal class Registrar<TRegistrable> where TRegistrable : class
+	// Previewer uses reflection to bind to this method; Removal or modification of visibility will break previewer.
+	internal static class Registrar
+	{
+		internal static void RegisterAll(Type[] attrTypes) => Internals.Registrar.RegisterAll(attrTypes);
+	}
+}
+namespace Xamarin.Forms.Internals
+{
+	[EditorBrowsable(EditorBrowsableState.Never)]
+	public class Registrar<TRegistrable> where TRegistrable : class
 	{
 		readonly Dictionary<Type, Type> _handlers = new Dictionary<Type, Type>();
 
 		public void Register(Type tview, Type trender)
 		{
+			//avoid caching null renderers
+			if (trender == null)
+				return;
 			_handlers[tview] = trender;
 		}
 
@@ -24,61 +37,129 @@ namespace Xamarin.Forms
 			return (TRegistrable)handler;
 		}
 
-		internal TOut GetHandler<TOut>(Type type) where TOut : TRegistrable
+		internal TRegistrable GetHandler(Type type, params object[] args)
+		{
+			if (args.Length == 0)
+			{
+				return GetHandler(type);
+			}
+
+			Type handlerType = GetHandlerType(type);
+			if (handlerType == null)
+				return null;
+
+			// This is by no means a general solution to matching with the correct constructor, but it'll
+			// do for finding Android renderers which need Context (vs older custom renderers which may still use
+			// parameterless constructors)
+			if (handlerType.GetTypeInfo().DeclaredConstructors.Any(info => info.GetParameters().Length == args.Length))
+			{
+				object handler = Activator.CreateInstance(handlerType, args);
+				return (TRegistrable)handler;
+			}
+			
+			return GetHandler(type);
+		}
+
+		public TOut GetHandler<TOut>(Type type) where TOut : TRegistrable
 		{
 			return (TOut)GetHandler(type);
 		}
 
-		internal Type GetHandlerType(Type viewType)
+		public TOut GetHandler<TOut>(Type type, params object[] args) where TOut : TRegistrable
 		{
-			Type type = LookupHandlerType(viewType);
-			if (type != null)
+			return (TOut)GetHandler(type, args);
+		}
+
+		public TOut GetHandlerForObject<TOut>(object obj) where TOut : TRegistrable
+		{
+			if (obj == null)
+				throw new ArgumentNullException(nameof(obj));
+
+			var reflectableType = obj as IReflectableType;
+			var type = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : obj.GetType();
+
+			return (TOut)GetHandler(type);
+		}
+
+		public TOut GetHandlerForObject<TOut>(object obj, params object[] args) where TOut : TRegistrable
+		{
+			if (obj == null)
+				throw new ArgumentNullException(nameof(obj));
+
+			var reflectableType = obj as IReflectableType;
+			var type = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : obj.GetType();
+
+			return (TOut)GetHandler(type, args);
+		}
+
+		public Type GetHandlerType(Type viewType)
+		{
+			Type type;
+			if (LookupHandlerType(viewType, out type))
 				return type;
 
 			// lazy load render-view association with RenderWithAttribute (as opposed to using ExportRenderer)
-			// TODO: change Registrar to a LazyImmutableDictionary and pass this logic to ctor as a delegate.
 			var attribute = viewType.GetTypeInfo().GetCustomAttribute<RenderWithAttribute>();
 			if (attribute == null)
+			{
+				Register(viewType, null); // Cache this result so we don't have to do GetCustomAttribute again
 				return null;
+			}
+
 			type = attribute.Type;
 
-			if (type.Name.StartsWith("_"))
+			if (type.Name.StartsWith("_", StringComparison.Ordinal))
 			{
 				// TODO: Remove attribute2 once renderer names have been unified across all platforms
 				var attribute2 = type.GetTypeInfo().GetCustomAttribute<RenderWithAttribute>();
 				if (attribute2 != null)
 					type = attribute2.Type;
 
-				if (type.Name.StartsWith("_"))
+				if (type.Name.StartsWith("_", StringComparison.Ordinal))
 				{
-					//var attrs = type.GetTypeInfo ().GetCustomAttributes ().ToArray ();
+					Register(viewType, null); // Cache this result so we don't work through this chain again
 					return null;
 				}
 			}
 
-			Register(viewType, type);
-			return LookupHandlerType(viewType);
+			Register(viewType, type); // Register this so we don't have to look for the RenderWith Attibute again in the future
+
+			return type;
 		}
 
-		Type LookupHandlerType(Type viewType)
+		public Type GetHandlerTypeForObject(object obj)
+		{
+			if (obj == null)
+				throw new ArgumentNullException(nameof(obj));
+
+			var reflectableType = obj as IReflectableType;
+			var type = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : obj.GetType();
+
+			return GetHandlerType(type);
+		}
+
+		bool LookupHandlerType(Type viewType, out Type handlerType)
 		{
 			Type type = viewType;
 
-			while (true)
+			while (type != null)
 			{
 				if (_handlers.ContainsKey(type))
-					return _handlers[type];
+				{
+					handlerType = _handlers[type];
+					return true;
+				}
 
 				type = type.GetTypeInfo().BaseType;
-				if (type == null)
-					break;
 			}
 
-			return null;
+			handlerType = null;
+			return false;
 		}
 	}
 
-	internal static class Registrar
+	[EditorBrowsable(EditorBrowsableState.Never)]
+	public static class Registrar
 	{
 		static Registrar()
 		{
@@ -86,18 +167,17 @@ namespace Xamarin.Forms
 		}
 
 		internal static Dictionary<string, Type> Effects { get; } = new Dictionary<string, Type>();
+		internal static Dictionary<string, StyleSheets.StylePropertyAttribute> StyleProperties { get; } = new Dictionary<string, StyleSheets.StylePropertyAttribute>();
 
-		internal static IEnumerable<Assembly> ExtraAssemblies { get; set; }
+		public static IEnumerable<Assembly> ExtraAssemblies { get; set; }
 
-		internal static Registrar<IRegisterable> Registered { get; }
+		public static Registrar<IRegisterable> Registered { get; }
 
-		internal static void RegisterAll(Type[] attrTypes)
+		public static void RegisterAll(Type[] attrTypes)
 		{
 			Assembly[] assemblies = Device.GetAssemblies();
 			if (ExtraAssemblies != null)
-			{
 				assemblies = assemblies.Union(ExtraAssemblies).ToArray();
-			}
 
 			Assembly defaultRendererAssembly = Device.PlatformServices.GetType().GetTypeInfo().Assembly;
 			int indexOfExecuting = Array.IndexOf(assemblies, defaultRendererAssembly);
@@ -115,11 +195,10 @@ namespace Xamarin.Forms
 				foreach (Type attrType in attrTypes)
 				{
 					Attribute[] attributes = assembly.GetCustomAttributes(attrType).ToArray();
-					if (attributes.Length == 0)
-						continue;
-
-					foreach (HandlerAttribute attribute in attributes)
+					var length = attributes.Length;
+					for (var i = 0; i < length;i++)
 					{
+						var attribute = (HandlerAttribute)attributes[i];
 						if (attribute.ShouldRegister())
 							Registered.Register(attribute.HandlerType, attribute.TargetType);
 					}
@@ -128,20 +207,26 @@ namespace Xamarin.Forms
 				string resolutionName = assembly.FullName;
 				var resolutionNameAttribute = (ResolutionGroupNameAttribute)assembly.GetCustomAttribute(typeof(ResolutionGroupNameAttribute));
 				if (resolutionNameAttribute != null)
-				{
 					resolutionName = resolutionNameAttribute.ShortName;
-				}
 
 				Attribute[] effectAttributes = assembly.GetCustomAttributes(typeof(ExportEffectAttribute)).ToArray();
-				if (effectAttributes.Length > 0)
+				var exportEffectsLength = effectAttributes.Length;
+				for (var i = 0; i < exportEffectsLength;i++)
 				{
-					foreach (Attribute attribute in effectAttributes)
-					{
-						var effect = (ExportEffectAttribute)attribute;
-						Effects [resolutionName + "." + effect.Id] = effect.Type;
-					}
+					var effect = (ExportEffectAttribute)effectAttributes[i];
+					Effects [resolutionName + "." + effect.Id] = effect.Type;
+				}
+
+				Attribute[] styleAttributes = assembly.GetCustomAttributes(typeof(StyleSheets.StylePropertyAttribute)).ToArray();
+				var stylePropertiesLength = styleAttributes.Length;
+				for (var i = 0; i < stylePropertiesLength; i++)
+				{
+					var attribute = (StyleSheets.StylePropertyAttribute)styleAttributes[i];
+					StyleProperties[attribute.CssPropertyName] = attribute;
 				}
 			}
+
+			DependencyService.Initialize(assemblies);
 		}
 	}
 }

@@ -1,13 +1,11 @@
 using System;
-using System.Drawing;
-using System.Runtime.Remoting.Channels;
 using System.ComponentModel;
-#if __UNIFIED__
-using UIKit;
 
-#else
-using MonoTouch.UIKit;
-#endif
+using System.Drawing;
+using CoreGraphics;
+using Foundation;
+using UIKit;
+using Xamarin.Forms.PlatformConfiguration.iOSSpecific;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -15,17 +13,50 @@ namespace Xamarin.Forms.Platform.iOS
 	{
 		UIColor _defaultTextColor;
 
-		public EntryRenderer()
+		// Placeholder default color is 70% gray
+		// https://developer.apple.com/library/prerelease/ios/documentation/UIKit/Reference/UITextField_Class/index.html#//apple_ref/occ/instp/UITextField/placeholder
+		readonly Color _defaultPlaceholderColor = ColorExtensions.SeventyPercentGrey.ToColor();
+
+		bool _useLegacyColorManagement;
+
+		bool _disposed;
+
+		static readonly int baseHeight = 30;
+		static CGSize initialSize = CGSize.Empty;
+
+		public EntryRenderer() 
 		{
 			Frame = new RectangleF(0, 20, 320, 40);
+		}
+
+		public override SizeRequest GetDesiredSize(double widthConstraint, double heightConstraint) 
+		{
+			var baseResult = base.GetDesiredSize(widthConstraint, heightConstraint);
+
+			if (Forms.IsiOS11OrNewer)
+				return baseResult;
+
+			NSString testString = new NSString("Tj");
+			var testSize = testString.GetSizeUsingAttributes(new UIStringAttributes { Font = Control.Font });
+			double height = baseHeight + testSize.Height - initialSize.Height;
+			height = Math.Round(height);
+
+			return new SizeRequest(new Size(baseResult.Request.Width, height));
 		}
 
 		IElementController ElementController => Element as IElementController;
 
 		protected override void Dispose(bool disposing)
 		{
+			if (_disposed)
+				return;
+
+			_disposed = true;
+
 			if (disposing)
 			{
+				_defaultTextColor = null;
+
 				if (Control != null)
 				{
 					Control.EditingDidBegin -= OnEditingBegan;
@@ -41,14 +72,21 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			base.OnElementChanged(e);
 
-			var textField = Control;
+			if (e.NewElement == null)
+				return;
 
 			if (Control == null)
 			{
-				SetNativeControl(textField = new UITextField(RectangleF.Empty));
+				var textField = new UITextField(RectangleF.Empty);
+				SetNativeControl(textField);
 
+				// Cache the default text color
 				_defaultTextColor = textField.TextColor;
+
+				_useLegacyColorManagement = e.NewElement.UseLegacyColorManagement();
+
 				textField.BorderStyle = UITextBorderStyle.RoundedRect;
+				textField.ClipsToBounds = true;
 
 				textField.EditingChanged += OnEditingChanged;
 
@@ -58,16 +96,14 @@ namespace Xamarin.Forms.Platform.iOS
 				textField.EditingDidEnd += OnEditingEnded;
 			}
 
-			if (e.NewElement != null)
-			{
-				UpdatePlaceholder();
-				UpdatePassword();
-				UpdateText();
-				UpdateColor();
-				UpdateFont();
-				UpdateKeyboard();
-				UpdateAlignment();
-			}
+			UpdatePlaceholder();
+			UpdatePassword();
+			UpdateText();
+			UpdateColor();
+			UpdateFont();
+			UpdateKeyboard();
+			UpdateAlignment();
+			UpdateAdjustsFontSizeToFitWidth();
 		}
 
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -95,6 +131,10 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateColor();
 				UpdatePlaceholder();
 			}
+			else if (e.PropertyName == PlatformConfiguration.iOSSpecific.Entry.AdjustsFontSizeToFitWidthProperty.PropertyName)
+				UpdateAdjustsFontSizeToFitWidth();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateAlignment();
 
 			base.OnElementPropertyChanged(sender, e);
 		}
@@ -111,39 +151,61 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void OnEditingEnded(object sender, EventArgs e)
 		{
+			// Typing aid changes don't always raise EditingChanged event
+			if (Control.Text != Element.Text)
+			{
+				ElementController.SetValueFromRenderer(Entry.TextProperty, Control.Text);
+			}
+
 			ElementController.SetValueFromRenderer(VisualElement.IsFocusedPropertyKey, false);
 		}
 
-		bool OnShouldReturn(UITextField view)
+		protected virtual bool OnShouldReturn(UITextField view)
 		{
 			Control.ResignFirstResponder();
 			((IEntryController)Element).SendCompleted();
-			return true;
+			return false;
 		}
 
 		void UpdateAlignment()
 		{
-			Control.TextAlignment = Element.HorizontalTextAlignment.ToNativeTextAlignment();
+			Control.TextAlignment = Element.HorizontalTextAlignment.ToNativeTextAlignment(((IVisualElementController)Element).EffectiveFlowDirection);
 		}
 
 		void UpdateColor()
 		{
 			var textColor = Element.TextColor;
 
-			if (textColor.IsDefault || !Element.IsEnabled)
-				Control.TextColor = _defaultTextColor;
+			if (_useLegacyColorManagement)
+			{
+				Control.TextColor = textColor.IsDefault || !Element.IsEnabled ? _defaultTextColor : textColor.ToUIColor();
+			}
 			else
-				Control.TextColor = textColor.ToUIColor();
+			{
+				Control.TextColor = textColor.IsDefault ? _defaultTextColor : textColor.ToUIColor();
+			}
+		}
+
+		void UpdateAdjustsFontSizeToFitWidth()
+		{
+			Control.AdjustsFontSizeToFitWidth = Element.OnThisPlatform().AdjustsFontSizeToFitWidth();
 		}
 
 		void UpdateFont()
 		{
+			if (initialSize == CGSize.Empty)
+			{
+				NSString testString = new NSString("Tj");
+				initialSize = testString.StringSize(Control.Font);
+			}
+
 			Control.Font = Element.ToUIFont();
 		}
 
 		void UpdateKeyboard()
 		{
 			Control.ApplyKeyboard(Element.Keyboard);
+			Control.ReloadInputViews();
 		}
 
 		void UpdatePassword()
@@ -168,12 +230,17 @@ namespace Xamarin.Forms.Platform.iOS
 
 			var targetColor = Element.PlaceholderColor;
 
-			// Placeholder default color is 70% gray
-			// https://developer.apple.com/library/prerelease/ios/documentation/UIKit/Reference/UITextField_Class/index.html#//apple_ref/occ/instp/UITextField/placeholder
-
-			var color = Element.IsEnabled && !targetColor.IsDefault ? targetColor : ColorExtensions.SeventyPercentGrey.ToColor();
-
-			Control.AttributedPlaceholder = formatted.ToAttributed(Element, color);
+			if (_useLegacyColorManagement)
+			{
+				var color = targetColor.IsDefault || !Element.IsEnabled ? _defaultPlaceholderColor : targetColor;
+				Control.AttributedPlaceholder = formatted.ToAttributed(Element, color);
+			}
+			else
+			{
+				// Using VSM color management; take whatever is in Element.PlaceholderColor
+				var color = targetColor.IsDefault ? _defaultPlaceholderColor : targetColor;
+				Control.AttributedPlaceholder = formatted.ToAttributed(Element, color);
+			}
 		}
 
 		void UpdateText()

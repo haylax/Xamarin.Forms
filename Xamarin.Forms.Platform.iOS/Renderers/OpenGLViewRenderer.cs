@@ -1,27 +1,10 @@
 ﻿using System;
-using System.Drawing;
 using System.ComponentModel;
-#if __UNIFIED__
 using GLKit;
 using OpenGLES;
 using Foundation;
 using CoreAnimation;
-#else
-using MonoTouch.GLKit;
-using MonoTouch.OpenGLES;
-using MonoTouch.Foundation;
-using MonoTouch.CoreAnimation;
-#endif
-#if __UNIFIED__
 using RectangleF = CoreGraphics.CGRect;
-using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -45,7 +28,7 @@ namespace Xamarin.Forms.Platform.iOS
 				_displayLink = null;
 
 				if (Element != null)
-					((IOpenGlViewController)Element).DisplayRequested -= Display;
+					Element.DisplayRequested -= Display;
 			}
 
 			base.Dispose(disposing);
@@ -54,7 +37,7 @@ namespace Xamarin.Forms.Platform.iOS
 		protected override void OnElementChanged(ElementChangedEventArgs<OpenGLView> e)
 		{
 			if (e.OldElement != null)
-				((IOpenGlViewController)e.OldElement).DisplayRequested -= Display;
+				e.OldElement.DisplayRequested -= Display;
 
 			if (e.NewElement != null)
 			{
@@ -62,7 +45,7 @@ namespace Xamarin.Forms.Platform.iOS
 				var glkView = new GLKView(RectangleF.Empty) { Context = context, DrawableDepthFormat = GLKViewDrawableDepthFormat.Format24, Delegate = new Delegate(e.NewElement) };
 				SetNativeControl(glkView);
 
-				((IOpenGlViewController)e.NewElement).DisplayRequested += Display;
+				e.NewElement.DisplayRequested += Display;
 
 				SetupRenderLoop(false);
 			}
@@ -93,12 +76,12 @@ namespace Xamarin.Forms.Platform.iOS
 					control.Display();
 				if (control == null || model == null || !model.HasRenderLoop)
 				{
-					_displayLink.Invalidate();
-					_displayLink.Dispose();
+					_displayLink?.Invalidate();
+					_displayLink?.Dispose();
 					_displayLink = null;
 				}
 			});
-			_displayLink.AddToRunLoop(NSRunLoop.Current, NSRunLoop.NSDefaultRunLoopMode);
+			_displayLink.AddToRunLoop(NSRunLoop.Current, NSRunLoop.NSRunLoopCommonModes);
 		}
 
 		class Delegate : GLKViewDelegate

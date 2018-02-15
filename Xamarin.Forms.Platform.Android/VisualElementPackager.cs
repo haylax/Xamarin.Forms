@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Android.Content;
+using Xamarin.Forms.Internals;
+using Android.Views;
 using AView = Android.Views.View;
 
 namespace Xamarin.Forms.Platform.Android
@@ -16,11 +19,16 @@ namespace Xamarin.Forms.Platform.Android
 
 		IVisualElementRenderer _renderer;
 
-		public VisualElementPackager(IVisualElementRenderer renderer)
+		VisualElement _element;
+
+		IElementController ElementController => _element;
+
+		public VisualElementPackager(IVisualElementRenderer renderer, VisualElement element = null)
 		{
 			if (renderer == null)
-				throw new ArgumentNullException("renderer");
+				throw new ArgumentNullException(nameof(renderer));
 
+			_element = element ?? renderer.Element;
 			_childAddedHandler = OnChildAdded;
 			_childRemovedHandler = OnChildRemoved;
 			_childReorderedHandler = OnChildrenReordered;
@@ -29,12 +37,17 @@ namespace Xamarin.Forms.Platform.Android
 			_renderer.ElementChanged += (sender, args) => SetElement(args.OldElement, args.NewElement);
 		}
 
-		IElementController ElementController => _renderer.Element as IElementController;
-
 		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
 		{
 			if (_disposed)
 				return;
+
 			_disposed = true;
 
 			if (_renderer != null)
@@ -45,57 +58,71 @@ namespace Xamarin.Forms.Platform.Android
 					_childViews = null;
 				}
 
-				_renderer.Element.ChildAdded -= _childAddedHandler;
-				_renderer.Element.ChildRemoved -= _childRemovedHandler;
+				if (_renderer.Element != null)
+				{
+					_renderer.Element.ChildAdded -= _childAddedHandler;
+					_renderer.Element.ChildRemoved -= _childRemovedHandler;
 
-				_renderer.Element.ChildrenReordered -= _childReorderedHandler;
+					_renderer.Element.ChildrenReordered -= _childReorderedHandler;
+				}
 				_renderer = null;
 			}
+
+			_element = null;
 		}
 
 		public void Load()
 		{
-			SetElement(null, _renderer.Element);
+			SetElement(null, _element);
 		}
 
 		void AddChild(VisualElement view, IVisualElementRenderer oldRenderer = null, RendererPool pool = null, bool sameChildren = false)
 		{
-			Performance.Start();
+			var reference = Guid.NewGuid().ToString();
+			Performance.Start(reference);
 
-			if (_childViews == null)
-				_childViews = new List<IVisualElementRenderer>();
-
-			IVisualElementRenderer renderer = oldRenderer;
-			if (pool != null)
-				renderer = pool.GetFreeRenderer(view);
-			if (renderer == null)
+			if (CompressedLayout.GetIsHeadless(view))
 			{
-				Performance.Start("New renderer");
-				renderer = Platform.CreateRenderer(view);
-				Performance.Stop("New renderer");
+				var packager = new VisualElementPackager(_renderer, view);
+				view.IsPlatformEnabled = true;
+				packager.Load();
 			}
-
-			if (renderer == oldRenderer)
+			else
 			{
-				Platform.SetRenderer(renderer.Element, null);
-				renderer.SetElement(view);
+				if (_childViews == null)
+					_childViews = new List<IVisualElementRenderer>();
+
+				IVisualElementRenderer renderer = oldRenderer;
+				if (pool != null)
+					renderer = pool.GetFreeRenderer(view);
+				if (renderer == null)
+				{
+					Performance.Start(reference, "New renderer");
+					renderer = Platform.CreateRenderer(view, _renderer.View.Context);
+					Performance.Stop(reference, "New renderer");
+				}
+
+				if (renderer == oldRenderer)
+				{
+					Platform.SetRenderer(renderer.Element, null);
+					renderer.SetElement(view);
+				}
+
+				Performance.Start(reference, "Set renderer");
+				Platform.SetRenderer(view, renderer);
+				Performance.Stop(reference, "Set renderer");
+
+				Performance.Start(reference, "Add view");
+				if (!sameChildren)
+				{
+					(_renderer.View as ViewGroup)?.AddView(renderer.View);
+					_childViews.Add(renderer);
+				}
+				Performance.Stop(reference, "Add view");
+
+				Performance.Stop(reference);
 			}
-
-			Performance.Start("Set renderer");
-			Platform.SetRenderer(view, renderer);
-			Performance.Stop("Set renderer");
-
-			Performance.Start("Add view");
-			if (!sameChildren)
-			{
-				_renderer.ViewGroup.AddView(renderer.ViewGroup);
-				_childViews.Add(renderer);
-			}
-			Performance.Stop("Add view");
-
-			Performance.Stop();
 		}
-
 		void EnsureChildOrder()
 		{
 			for (var i = 0; i < ElementController.LogicalChildren.Count; i++)
@@ -105,7 +132,8 @@ namespace Xamarin.Forms.Platform.Android
 				if (element != null)
 				{
 					IVisualElementRenderer r = Platform.GetRenderer(element);
-					_renderer.ViewGroup.BringChildToFront(r.ViewGroup);
+					if (r != null)
+						(_renderer.View as ViewGroup)?.BringChildToFront(r.View);
 				}
 			}
 		}
@@ -122,12 +150,13 @@ namespace Xamarin.Forms.Platform.Android
 
 		void OnChildRemoved(object sender, ElementEventArgs e)
 		{
-			Performance.Start();
+			var reference = Guid.NewGuid().ToString();
+			Performance.Start(reference);
 			var view = e.Element as VisualElement;
 			if (view != null)
 				RemoveChild(view);
 
-			Performance.Stop();
+			Performance.Stop(reference);
 		}
 
 		void OnChildrenReordered(object sender, EventArgs e)
@@ -139,13 +168,14 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			IVisualElementRenderer renderer = Platform.GetRenderer(view);
 			_childViews.Remove(renderer);
-			renderer.ViewGroup.RemoveFromParent();
+			renderer.View.RemoveFromParent();
 			renderer.Dispose();
 		}
 
 		void SetElement(VisualElement oldElement, VisualElement newElement)
 		{
-			Performance.Start();
+			var reference = Guid.NewGuid().ToString();
+			Performance.Start(reference);
 
 			var sameChildrenTypes = false;
 
@@ -190,7 +220,7 @@ namespace Xamarin.Forms.Platform.Android
 
 			if (newElement != null)
 			{
-				Performance.Start("Setup");
+				Performance.Start(reference, "Setup");
 				newElement.ChildAdded += _childAddedHandler;
 				newElement.ChildRemoved += _childRemovedHandler;
 
@@ -211,10 +241,12 @@ namespace Xamarin.Forms.Platform.Android
 				//if (renderer.Element.LogicalChildren.Any() && renderer.ViewGroup.ChildCount != renderer.Element.LogicalChildren.Count)
 				//	throw new InvalidOperationException ("SetElement did not create the correct number of children");
 #endif
-				Performance.Stop("Setup");
+				EnsureChildOrder();
+				Performance.Stop(reference, "Setup");
 			}
 
-			Performance.Stop();
+			Performance.Stop(reference);
 		}
 	}
 }
+

@@ -1,6 +1,6 @@
 <Type Name="RelativeLayout" FullName="Xamarin.Forms.RelativeLayout">
-  <TypeSignature Language="C#" Value="public class RelativeLayout : Xamarin.Forms.Layout&lt;Xamarin.Forms.View&gt;" />
-  <TypeSignature Language="ILAsm" Value=".class public auto ansi beforefieldinit RelativeLayout extends Xamarin.Forms.Layout`1&lt;class Xamarin.Forms.View&gt;" />
+  <TypeSignature Language="C#" Value="public class RelativeLayout : Xamarin.Forms.Layout&lt;Xamarin.Forms.View&gt;, Xamarin.Forms.IElementConfiguration&lt;Xamarin.Forms.RelativeLayout&gt;" />
+  <TypeSignature Language="ILAsm" Value=".class public auto ansi beforefieldinit RelativeLayout extends Xamarin.Forms.Layout`1&lt;class Xamarin.Forms.View&gt; implements class Xamarin.Forms.IElementConfiguration`1&lt;class Xamarin.Forms.RelativeLayout&gt;" />
   <AssemblyInfo>
     <AssemblyName>Xamarin.Forms.Core</AssemblyName>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -17,7 +17,11 @@
       <BaseTypeArgument TypeParamName="T">Xamarin.Forms.View</BaseTypeArgument>
     </BaseTypeArguments>
   </Base>
-  <Interfaces />
+  <Interfaces>
+    <Interface>
+      <InterfaceName>Xamarin.Forms.IElementConfiguration&lt;Xamarin.Forms.RelativeLayout&gt;</InterfaceName>
+    </Interface>
+  </Interfaces>
   <Docs>
     <summary>A <see cref="T:Xamarin.Forms.Layout`1" /> that uses <see cref="T:Xamarin.Forms.Constraint" />s to layout its children.</summary>
     <remarks>
@@ -336,6 +340,31 @@ public class RelativeLayoutExample : ContentPage
         <remarks>To be added.</remarks>
       </Docs>
     </Member>
+    <Member MemberName="On&lt;T&gt;">
+      <MemberSignature Language="C#" Value="public Xamarin.Forms.IPlatformElementConfiguration&lt;T,Xamarin.Forms.RelativeLayout&gt; On&lt;T&gt; () where T : Xamarin.Forms.IConfigPlatform;" />
+      <MemberSignature Language="ILAsm" Value=".method public hidebysig newslot virtual instance class Xamarin.Forms.IPlatformElementConfiguration`2&lt;!!T, class Xamarin.Forms.RelativeLayout&gt; On&lt;(class Xamarin.Forms.IConfigPlatform) T&gt;() cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>Xamarin.Forms.IPlatformElementConfiguration&lt;T,Xamarin.Forms.RelativeLayout&gt;</ReturnType>
+      </ReturnValue>
+      <TypeParameters>
+        <TypeParameter Name="T">
+          <Constraints>
+            <InterfaceName>Xamarin.Forms.IConfigPlatform</InterfaceName>
+          </Constraints>
+        </TypeParameter>
+      </TypeParameters>
+      <Parameters />
+      <Docs>
+        <typeparam name="T">To be added.</typeparam>
+        <summary>To be added.</summary>
+        <returns>To be added.</returns>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
     <Member MemberName="OnAdded">
       <MemberSignature Language="C#" Value="protected override void OnAdded (Xamarin.Forms.View view);" />
       <MemberSignature Language="ILAsm" Value=".method familyhidebysig virtual instance void OnAdded(class Xamarin.Forms.View view) cil managed" />
@@ -401,7 +430,7 @@ public class RelativeLayoutExample : ContentPage
       </AssemblyInfo>
       <Attributes>
         <Attribute>
-          <AttributeName>System.Obsolete("Use OnMeasure")</AttributeName>
+          <AttributeName>System.Obsolete("OnSizeRequest is obsolete as of version 2.2.0. Please use OnMeasure instead.")</AttributeName>
         </Attribute>
       </Attributes>
       <ReturnValue>
@@ -412,8 +441,8 @@ public class RelativeLayoutExample : ContentPage
         <Parameter Name="heightConstraint" Type="System.Double" />
       </Parameters>
       <Docs>
-        <param name="widthConstraint">To be added.</param>
-        <param name="heightConstraint">To be added.</param>
+        <param name="widthConstraint">The width constraint.</param>
+        <param name="heightConstraint">The height constraint.</param>
         <summary>Called when this <see cref="T:Xamarin.Forms.RelativeLayout" /> has received a size request.</summary>
         <returns>To be added.</returns>
         <remarks>To be added.</remarks>
@@ -443,6 +472,90 @@ public class RelativeLayoutExample : ContentPage
         <param name="bindable">The <see cref="T:Xamarin.Forms.BindableObject" /> to which the constraint will be applied.</param>
         <param name="value">The <see cref="T:Xamarin.Forms.BoundsConstraint" /> on the <paramref name="bindable" />.</param>
         <summary>Sets <paramref name="value" /> as a constraint on the bounds of <paramref name="bindable" />.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SetHeightConstraint">
+      <MemberSignature Language="C#" Value="public static void SetHeightConstraint (Xamarin.Forms.BindableObject bindable, Xamarin.Forms.Constraint value);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetHeightConstraint(class Xamarin.Forms.BindableObject bindable, class Xamarin.Forms.Constraint value) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="bindable" Type="Xamarin.Forms.BindableObject" />
+        <Parameter Name="value" Type="Xamarin.Forms.Constraint" />
+      </Parameters>
+      <Docs>
+        <param name="bindable">The <see cref="T:Xamarin.Forms.BindableObject" /> to which the constraint will be applied.</param>
+        <param name="value">The <see cref="T:Xamarin.Forms.Constraint" /> on the height of the <paramref name="bindable" />.</param>
+        <summary>Sets <paramref name="value" /> as a constraint on the height of the <paramref name="bindable" />.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SetWidthConstraint">
+      <MemberSignature Language="C#" Value="public static void SetWidthConstraint (Xamarin.Forms.BindableObject bindable, Xamarin.Forms.Constraint value);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetWidthConstraint(class Xamarin.Forms.BindableObject bindable, class Xamarin.Forms.Constraint value) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="bindable" Type="Xamarin.Forms.BindableObject" />
+        <Parameter Name="value" Type="Xamarin.Forms.Constraint" />
+      </Parameters>
+      <Docs>
+        <param name="bindable">The <see cref="T:Xamarin.Forms.BindableObject" /> to which the constraint will be applied.</param>
+        <param name="value">The <see cref="T:Xamarin.Forms.Constraint" /> on the width of the <paramref name="bindable" />.</param>
+        <summary>Sets <paramref name="value" /> as a constraint on the width of the <paramref name="bindable" />.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SetXConstraint">
+      <MemberSignature Language="C#" Value="public static void SetXConstraint (Xamarin.Forms.BindableObject bindable, Xamarin.Forms.Constraint value);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetXConstraint(class Xamarin.Forms.BindableObject bindable, class Xamarin.Forms.Constraint value) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="bindable" Type="Xamarin.Forms.BindableObject" />
+        <Parameter Name="value" Type="Xamarin.Forms.Constraint" />
+      </Parameters>
+      <Docs>
+        <param name="bindable">The <see cref="T:Xamarin.Forms.BindableObject" /> to which the constraint will be applied.</param>
+        <param name="value">The <see cref="T:Xamarin.Forms.Constraint" /> on the X position of the <paramref name="bindable" />.</param>
+        <summary>Sets <paramref name="value" /> as a constraint on the X position of the <paramref name="bindable" />.</summary>
+        <remarks>To be added.</remarks>
+      </Docs>
+    </Member>
+    <Member MemberName="SetYConstraint">
+      <MemberSignature Language="C#" Value="public static void SetYConstraint (Xamarin.Forms.BindableObject bindable, Xamarin.Forms.Constraint value);" />
+      <MemberSignature Language="ILAsm" Value=".method public static hidebysig void SetYConstraint(class Xamarin.Forms.BindableObject bindable, class Xamarin.Forms.Constraint value) cil managed" />
+      <MemberType>Method</MemberType>
+      <AssemblyInfo>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
+      </AssemblyInfo>
+      <ReturnValue>
+        <ReturnType>System.Void</ReturnType>
+      </ReturnValue>
+      <Parameters>
+        <Parameter Name="bindable" Type="Xamarin.Forms.BindableObject" />
+        <Parameter Name="value" Type="Xamarin.Forms.Constraint" />
+      </Parameters>
+      <Docs>
+        <param name="bindable">The <see cref="T:Xamarin.Forms.BindableObject" /> to which the constraint will be applied.</param>
+        <param name="value">The <see cref="T:Xamarin.Forms.Constraint" /> on the Y position of the <paramref name="bindable" />.</param>
+        <summary>Sets <paramref name="value" /> as a constraint on the Y position of the <paramref name="bindable" />.</summary>
         <remarks>To be added.</remarks>
       </Docs>
     </Member>

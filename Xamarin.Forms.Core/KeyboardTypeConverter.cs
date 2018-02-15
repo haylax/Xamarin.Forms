@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms
 {
+	[Xaml.TypeConversion(typeof(Keyboard))]
 	public class KeyboardTypeConverter : TypeConverter
 	{
 		public override object ConvertFromInvariantString(string value)

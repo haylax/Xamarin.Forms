@@ -7,11 +7,8 @@ namespace Xamarin.Forms.Controls
 		{
 			Title = "ImageCell Table Gallery - Legacy";
 
-			Device.OnPlatform (iOS: () => {
-				if (Device.Idiom == TargetIdiom.Tablet) {
-					Padding = new Thickness (0, 0, 0, 60);
-				}
-			});
+			if (Device.RuntimePlatform == Device.iOS && Device.Idiom == TargetIdiom.Tablet)
+				Padding = new Thickness(0, 0, 0, 60);
 
 			var tableSection = new TableSection ("Section One") {
 				new ImageCell { Text = "Text 1", ImageSource = new FileImageSource { File = "crimson.jpg" } },
@@ -59,6 +56,7 @@ namespace Xamarin.Forms.Controls
 			};
 
 			var table = new TableView {
+				AutomationId = CellTypeList.CellTestContainerId,
 				Root = root,
 			};
 

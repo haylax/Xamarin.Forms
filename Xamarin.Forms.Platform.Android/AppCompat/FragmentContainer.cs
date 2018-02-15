@@ -1,9 +1,10 @@
 using System;
 using Android.OS;
 using Android.Runtime;
-using Android.Support.V4.App;
 using Android.Views;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific.AppCompat;
 using AView = Android.Views.View;
+using Fragment = Android.Support.V4.App.Fragment;
 
 namespace Xamarin.Forms.Platform.Android.AppCompat
 {
@@ -63,10 +64,10 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 		{
 			if (Page != null)
 			{
-				_visualElementRenderer = Android.Platform.CreateRenderer(Page, ChildFragmentManager);
+				_visualElementRenderer = Android.Platform.CreateRenderer(Page, ChildFragmentManager, inflater.Context);
 				Android.Platform.SetRenderer(Page, _visualElementRenderer);
 
-				_pageContainer = new PageContainer(Forms.Context, _visualElementRenderer, true);
+				_pageContainer = new PageContainer(inflater.Context, _visualElementRenderer, true);
 
 				_onCreateCallback?.Invoke(_pageContainer);
 
@@ -75,33 +76,31 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 			return null;
 		}
-		
+
 		public override void OnDestroyView()
 		{
 			if (Page != null)
 			{
 				if (_visualElementRenderer != null)
 				{
-					if (_visualElementRenderer.ViewGroup.Handle != IntPtr.Zero)
+					if (_visualElementRenderer.View.Handle != IntPtr.Zero)
 					{
-						_visualElementRenderer.ViewGroup.RemoveFromParent();
+						_visualElementRenderer.View.RemoveFromParent();
 					}
 
 					_visualElementRenderer.Dispose();
 				}
 
-				if (_pageContainer != null && _pageContainer.Handle != IntPtr.Zero)
-				{
-					_pageContainer.RemoveFromParent();
-					_pageContainer.Dispose();
-				}
+				// We do *not* eagerly dispose of the _pageContainer here; doing so  causes a memory leak 
+				// if animated fragment transitions are enabled (it removes some info that the animation's 
+				// onAnimationEnd handler requires to properly clean things up)
+				// Instead, we let the garbage collector pick it up later, when we can be sure it's safe
 
 				Page?.ClearValue(Android.Platform.RendererProperty);
 			}
 
 			_onCreateCallback = null;
 			_visualElementRenderer = null;
-			_pageContainer = null;
 
 			base.OnDestroyView();
 		}
@@ -121,15 +120,35 @@ namespace Xamarin.Forms.Platform.Android.AppCompat
 
 		public override void OnPause()
 		{
-			PageController?.SendDisappearing();
+			bool shouldSendEvent = Application.Current.OnThisPlatform().GetSendDisappearingEventOnPause();
+			if (shouldSendEvent)
+				SendLifecycleEvent(false);
+
 			base.OnPause();
 		}
-		
+
 		public override void OnResume()
 		{
-			if (UserVisibleHint)
-				PageController?.SendAppearing();
+			bool shouldSendEvent = Application.Current.OnThisPlatform().GetSendAppearingEventOnResume();
+			if (shouldSendEvent)
+				SendLifecycleEvent(true);
+
 			base.OnResume();
+		}
+
+		void SendLifecycleEvent(bool isAppearing)
+		{
+			var masterDetailPage = Application.Current.MainPage as MasterDetailPage;
+			var pageContainer = (masterDetailPage != null ? masterDetailPage.Detail : Application.Current.MainPage) as IPageContainer<Page>;
+			Page currentPage = pageContainer?.CurrentPage;
+
+			if(!(currentPage == null || currentPage == PageController))
+				return;
+
+			if (isAppearing && UserVisibleHint)
+				PageController?.SendAppearing();
+			else if(!isAppearing)
+				PageController?.SendDisappearing();
 		}
 	}
 }

@@ -1,12 +1,21 @@
+using System;
 using System.ComponentModel;
+using Android.Content;
 using Android.Views;
+using Xamarin.Forms.PlatformConfiguration.AndroidSpecific;
 
 namespace Xamarin.Forms.Platform.Android
 {
 	public class BoxRenderer : VisualElementRenderer<BoxView>
 	{
-		bool _isInViewCell;
+		readonly MotionEventHelper _motionEventHelper = new MotionEventHelper();
 
+		public BoxRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use BoxRenderer(Context) instead.")]
 		public BoxRenderer()
 		{
 			AutoPackage = false;
@@ -16,26 +25,15 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			if (base.OnTouchEvent(e))
 				return true;
-			return !Element.InputTransparent && !_isInViewCell;
+
+			return _motionEventHelper.HandleMotionEvent(Parent, e);
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<BoxView> e)
 		{
 			base.OnElementChanged(e);
 
-			if (e.NewElement != null)
-			{
-				var parent = e.NewElement.Parent;
-				while (parent != null)
-				{
-					if (parent is ViewCell)
-					{
-						_isInViewCell = true;
-						break;
-					}
-					parent = parent.Parent;
-				}
-			}
+			_motionEventHelper.UpdateElement(e.NewElement);
 
 			UpdateBackgroundColor();
 		}

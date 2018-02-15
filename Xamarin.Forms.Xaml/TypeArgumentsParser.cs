@@ -3,7 +3,7 @@ using System.Xml;
 
 namespace Xamarin.Forms.Xaml
 {
-	internal static class TypeArgumentsParser
+	static class TypeArgumentsParser
 	{
 		public static IList<XmlType> ParseExpression(string expression, IXmlNamespaceResolver resolver, IXmlLineInfo lineInfo)
 		{
@@ -47,8 +47,24 @@ namespace Xamarin.Forms.Xaml
 					type.Substring(type.IndexOf('(') + 1, type.LastIndexOf(')') - type.IndexOf('(') - 1), resolver, lineinfo);
 				type = type.Substring(0, type.IndexOf('('));
 			}
-			var namespaceuri = type.Contains(":") ? resolver.LookupNamespace(type.Split(':')[0].Trim()) : "";
-			return new XmlType(namespaceuri, type, typeArguments);
+
+			var split = type.Split(':');
+			if (split.Length > 2)
+				return null;
+
+			string prefix, name;
+			if (split.Length == 2) {
+				prefix = split [0];
+				name = split [1];
+			} else {
+				prefix = "";
+				name = split [0];
+			}
+
+			var namespaceuri = resolver.LookupNamespace(prefix);
+			if (namespaceuri == null)
+				throw new XamlParseException($"No xmlns declaration for prefix '{prefix}'.", lineinfo, null);
+			return new XmlType(namespaceuri, name, typeArguments);
 		}
 	}
 }

@@ -1,11 +1,12 @@
 using System;
 using System.ComponentModel;
+using Android.Content;
 using Android.Content.Res;
 using Android.Graphics;
 using Android.Text;
 using Android.Util;
+using Android.Views;
 using Android.Widget;
-using AColor = Android.Graphics.Color;
 
 namespace Xamarin.Forms.Platform.Android
 {
@@ -23,6 +24,14 @@ namespace Xamarin.Forms.Platform.Android
 		FormsTextView _view;
 		bool _wasFormatted;
 
+		readonly MotionEventHelper _motionEventHelper = new MotionEventHelper();
+
+		public LabelRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use LabelRenderer(Context) instead.")]
 		public LabelRenderer()
 		{
 			AutoPackage = false;
@@ -97,6 +106,8 @@ namespace Xamarin.Forms.Platform.Android
 				if (e.OldElement.HorizontalTextAlignment != e.NewElement.HorizontalTextAlignment || e.OldElement.VerticalTextAlignment != e.NewElement.VerticalTextAlignment)
 					UpdateGravity();
 			}
+
+			_motionEventHelper.UpdateElement(e.NewElement);
 		}
 
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -160,34 +171,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		void UpdateLineBreakMode()
 		{
-            _view.SetSingleLine(false);
-			switch (Element.LineBreakMode)
-			{
-				case LineBreakMode.NoWrap:
-					_view.SetMaxLines(1);
-					_view.Ellipsize = null;
-					break;
-				case LineBreakMode.WordWrap:
-					_view.Ellipsize = null;
-					_view.SetMaxLines(100);
-					break;
-				case LineBreakMode.CharacterWrap:
-					_view.Ellipsize = null;
-					_view.SetMaxLines(100);
-					break;
-				case LineBreakMode.HeadTruncation:
-					_view.SetMaxLines(1);
-					_view.Ellipsize = TextUtils.TruncateAt.Start;
-					break;
-				case LineBreakMode.TailTruncation:
-					_view.SetMaxLines(1);
-					_view.Ellipsize = TextUtils.TruncateAt.End;
-					break;
-				case LineBreakMode.MiddleTruncation:
-					_view.SetMaxLines(1);
-					_view.Ellipsize = TextUtils.TruncateAt.Middle;
-					break;
-			}
+			_view.SetLineBreakMode(Element.LineBreakMode);
 			_lastSizeRequest = null;
 		}
 
@@ -216,6 +200,14 @@ namespace Xamarin.Forms.Platform.Android
 			}
 
 			_lastSizeRequest = null;
+		}
+
+		public override bool OnTouchEvent(MotionEvent e)
+		{
+			if (base.OnTouchEvent(e))
+				return true;
+
+			return _motionEventHelper.HandleMotionEvent(Parent, e);
 		}
 	}
 }

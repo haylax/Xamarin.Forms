@@ -18,11 +18,8 @@ namespace Xamarin.Forms.Controls
 		{
 			Title = "EntryCell List Gallery - Legacy";
 
-			Device.OnPlatform (iOS: () => {
-				if (Device.Idiom == TargetIdiom.Tablet) {
-					Padding = new Thickness (0, 0, 0, 60);
-				}
-			});
+			if (Device.RuntimePlatform == Device.iOS && Device.Idiom == TargetIdiom.Tablet)
+				Padding = new Thickness(0, 0, 0, 60);
 
 			var dataTemplate = new DataTemplate (typeof(EntryCell));
 			dataTemplate.SetBinding (EntryCell.LabelProperty, new Binding ("Label"));
@@ -34,6 +31,7 @@ namespace Xamarin.Forms.Controls
 			};
 
 			var listView = new ListView {
+				AutomationId = CellTypeList.CellTestContainerId,
 				ItemsSource = Enumerable.Range (0, 100).Select (i => new EntryCellTest {
 					Label = "Label " + i,
 					LabelColor =  i % 2 == 0 ? Color.Red : Color.Blue,

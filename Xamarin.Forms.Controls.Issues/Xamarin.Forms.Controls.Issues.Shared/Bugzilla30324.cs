@@ -7,8 +7,11 @@ using Xamarin.UITest;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
+#if UITEST
+	[Category(Core.UITests.UITestCategories.MasterDetailPage)]
+#endif
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Bugzilla, 30324, "Detail view of MasterDetailPage does not get appearance events on Android when whole MasterDetailPage disappears/reappears")]
 	public class Bugzilla30324 : TestNavigationPage

@@ -6,11 +6,8 @@ namespace Xamarin.Forms.Controls
 		{
 			Title = "EntryCell Table Gallery - Legacy";
 
-			Device.OnPlatform (iOS: () => {
-				if (Device.Idiom == TargetIdiom.Tablet) {
-					Padding = new Thickness (0, 0, 0, 60);
-				}
-			});
+			if (Device.RuntimePlatform == Device.iOS && Device.Idiom == TargetIdiom.Tablet)
+				Padding = new Thickness(0, 0, 0, 60);
 
 			int timesEntered = 1;
 
@@ -76,6 +73,7 @@ namespace Xamarin.Forms.Controls
 			};
 
 			var table = new TableView {
+				AutomationId = CellTypeList.CellTestContainerId,
 				Root = root
 			};
 

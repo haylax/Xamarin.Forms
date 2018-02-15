@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms
 {
@@ -17,6 +19,7 @@ namespace Xamarin.Forms
 		BindingExpression _expression;
 		string _path;
 		object _source;
+		string _updateSourceEventName;
 
 		public Binding()
 		{
@@ -81,6 +84,16 @@ namespace Xamarin.Forms
 			}
 		}
 
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public string UpdateSourceEventName {
+			get { return _updateSourceEventName; }
+			set {
+				ThrowIfApplied();
+				_updateSourceEventName = value;
+			}
+		}
+
+		[Obsolete]
 		public static Binding Create<TSource>(Expression<Func<TSource, object>> propertyGetter, BindingMode mode = BindingMode.Default, IValueConverter converter = null, object converterParameter = null,
 											  string stringFormat = null)
 		{
@@ -101,10 +114,15 @@ namespace Xamarin.Forms
 			_expression.Apply(fromTarget);
 		}
 
-		internal override void Apply(object newContext, BindableObject bindObj, BindableProperty targetProperty)
+		internal override void Apply(object newContext, BindableObject bindObj, BindableProperty targetProperty, bool fromBindingContextChanged = false)
 		{
 			object src = _source;
-			base.Apply(src ?? newContext, bindObj, targetProperty);
+			var isApplied = IsApplied;
+
+			base.Apply(src ?? newContext, bindObj, targetProperty, fromBindingContextChanged: fromBindingContextChanged);
+
+			if (src != null && isApplied && fromBindingContextChanged)
+				return;
 
 			object bindingContext = src ?? Context ?? newContext;
 			if (_expression == null && bindingContext != null)
@@ -115,7 +133,7 @@ namespace Xamarin.Forms
 
 		internal override BindingBase Clone()
 		{
-			return new Binding(Path, Mode) { Converter = Converter, ConverterParameter = ConverterParameter, StringFormat = StringFormat, Source = Source };
+			return new Binding(Path, Mode) { Converter = Converter, ConverterParameter = ConverterParameter, StringFormat = StringFormat, Source = Source, UpdateSourceEventName = UpdateSourceEventName };
 		}
 
 		internal override object GetSourceValue(object value, Type targetPropertyType)
@@ -134,14 +152,18 @@ namespace Xamarin.Forms
 			return base.GetTargetValue(value, sourcePropertyType);
 		}
 
-		internal override void Unapply()
+		internal override void Unapply(bool fromBindingContextChanged = false)
 		{
-			base.Unapply();
+			if (Source != null && fromBindingContextChanged && IsApplied)
+				return;
+			
+			base.Unapply(fromBindingContextChanged: fromBindingContextChanged);
 
 			if (_expression != null)
 				_expression.Unapply();
 		}
 
+		[Obsolete]
 		static string GetBindingPath<TSource>(Expression<Func<TSource, object>> propertyGetter)
 		{
 			Expression expr = propertyGetter.Body;

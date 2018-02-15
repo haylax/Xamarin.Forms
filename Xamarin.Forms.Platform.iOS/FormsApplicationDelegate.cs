@@ -1,17 +1,9 @@
 using System;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-#if __UNIFIED__
+using System.Globalization;
+using CoreSpotlight;
 using Foundation;
 using UIKit;
-using CoreSpotlight;
-
-#else
-using MonoTouch.Foundation;
-using MonoTouch.UIKit;
-using MonoTouch.CoreSpotlight;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -20,6 +12,17 @@ namespace Xamarin.Forms.Platform.iOS
 		Application _application;
 		bool _isSuspended;
 		UIWindow _window;
+		public override UIWindow Window
+		{
+			get
+			{
+				return _window;
+			}
+			set
+			{
+				_window = value;
+			}
+		}
 
 		protected FormsApplicationDelegate()
 		{
@@ -45,7 +48,8 @@ namespace Xamarin.Forms.Platform.iOS
 			// prepare you apps window and views for display
 			// keep lightweight, anything long winded should be executed asynchronously on a secondary thread.
 			// application:didFinishLaunchingWithOptions
-			_window = new UIWindow(UIScreen.MainScreen.Bounds);
+			if (Window == null)
+				Window = new UIWindow(UIScreen.MainScreen.Bounds);
 
 			if (_application == null)
 				throw new InvalidOperationException("You MUST invoke LoadApplication () before calling base.FinishedLaunching ()");
@@ -63,6 +67,8 @@ namespace Xamarin.Forms.Platform.iOS
 			if (_application != null && _isSuspended)
 			{
 				_isSuspended = false;
+				CultureInfo.CurrentCulture.ClearCachedData();
+				TimeZoneInfo.ClearCachedData();
 				_application.SendResume();
 			}
 		}
@@ -123,7 +129,7 @@ namespace Xamarin.Forms.Platform.iOS
 			if (application == null)
 				throw new ArgumentNullException("application");
 
-			Application.Current = application;
+			Application.SetCurrentApplication(application);
 			_application = application;
 			(application as IApplicationController)?.SetAppIndexingProvider(new IOSAppIndexingProvider());
 
@@ -162,7 +168,7 @@ namespace Xamarin.Forms.Platform.iOS
 		void SetMainPage()
 		{
 			UpdateMainPage();
-			_window.MakeKeyAndVisible();
+			Window.MakeKeyAndVisible();
 		}
 
 		void UpdateMainPage()
@@ -170,10 +176,11 @@ namespace Xamarin.Forms.Platform.iOS
 			if (_application.MainPage == null)
 				return;
 
-			var platformRenderer = (PlatformRenderer)_window.RootViewController;
-			_window.RootViewController = _application.MainPage.CreateViewController();
+			var platformRenderer = Window.RootViewController as PlatformRenderer;
 			if (platformRenderer != null)
 				((IDisposable)platformRenderer.Platform).Dispose();
+
+			Window.RootViewController = _application.MainPage.CreateViewController();
 		}
 	}
 }

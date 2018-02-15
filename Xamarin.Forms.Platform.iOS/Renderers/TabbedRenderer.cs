@@ -1,24 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
-using System.Collections.Generic;
-using Xamarin.Forms.Internals;
-#if __UNIFIED__
+using System.Threading.Tasks;
 using UIKit;
-#else
-using MonoTouch.UIKit;
-#endif
-#if __UNIFIED__
-using RectangleF = CoreGraphics.CGRect;
-using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
+using Xamarin.Forms.Internals;
+using static Xamarin.Forms.PlatformConfiguration.iOSSpecific.Page;
+using PageUIStatusBarAnimation = Xamarin.Forms.PlatformConfiguration.iOSSpecific.UIStatusBarAnimation;
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -33,8 +21,7 @@ namespace Xamarin.Forms.Platform.iOS
 		bool _loaded;
 		Size _queuedSize;
 
-		IPageController PageController => Element as IPageController;
-		IElementController ElementController => Element as IElementController;
+		Page Page => Element as Page;
 
 		public override UIViewController SelectedViewController
 		{
@@ -112,14 +99,14 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override void ViewDidAppear(bool animated)
 		{
-			PageController.SendAppearing();
+			Page.SendAppearing();
 			base.ViewDidAppear(animated);
 		}
 
 		public override void ViewDidDisappear(bool animated)
 		{
 			base.ViewDidDisappear(animated);
-			PageController.SendDisappearing();
+			Page.SendDisappearing();
 		}
 
 		public override void ViewDidLayoutSubviews()
@@ -136,7 +123,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			var frame = View.Frame;
 			var tabBarFrame = TabBar.Frame;
-			PageController.ContainerArea = new Rectangle(0, 0, frame.Width, frame.Height - tabBarFrame.Height);
+			Page.ContainerArea = new Rectangle(0, 0, frame.Width, frame.Height - tabBarFrame.Height);
 
 			if (!_queuedSize.IsZero)
 			{
@@ -147,19 +134,11 @@ namespace Xamarin.Forms.Platform.iOS
 			_loaded = true;
 		}
 
-		public override void ViewDidLoad()
-		{
-			base.ViewDidLoad();
-
-			if (!Forms.IsiOS7OrNewer)
-				WantsFullScreenLayout = false;
-		}
-
 		protected override void Dispose(bool disposing)
 		{
 			if (disposing)
 			{
-				PageController.SendDisappearing();
+				Page.SendDisappearing();
 				Tabbed.PropertyChanged -= OnPropertyChanged;
 				Tabbed.PagesChanged -= OnPagesChanged;
 				FinishedCustomizingViewControllers -= HandleFinishedCustomizingViewControllers;
@@ -192,7 +171,9 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void OnPagePropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName == Page.TitleProperty.PropertyName)
+			// Setting TabBarItem.Title in iOS 10 causes rendering bugs
+			// Work around this by creating a new UITabBarItem on each change
+			if (e.PropertyName == Page.TitleProperty.PropertyName && !Forms.IsiOS10OrNewer)
 			{
 				var page = (Page)sender;
 				var renderer = Platform.GetRenderer(page);
@@ -202,26 +183,16 @@ namespace Xamarin.Forms.Platform.iOS
 				if (renderer.ViewController.TabBarItem != null)
 					renderer.ViewController.TabBarItem.Title = page.Title;
 			}
-			else if (e.PropertyName == Page.IconProperty.PropertyName)
+			else if (e.PropertyName == Page.IconProperty.PropertyName || e.PropertyName == Page.TitleProperty.PropertyName && Forms.IsiOS10OrNewer)
 			{
 				var page = (Page)sender;
 
-				var renderer = Platform.GetRenderer(page);
-				if (renderer == null)
+				IVisualElementRenderer renderer = Platform.GetRenderer(page);
+
+				if (renderer?.ViewController.TabBarItem == null)
 					return;
 
-				if (renderer.ViewController.TabBarItem == null)
-					return;
-
-				UIImage image = null;
-				if (!string.IsNullOrEmpty(page.Icon))
-					image = new UIImage(page.Icon);
-
-				// the new UITabBarItem forces redraw, setting the UITabBarItem.Image does not
-				renderer.ViewController.TabBarItem = new UITabBarItem(page.Title, image, 0);
-
-				if (image != null)
-					image.Dispose();
+				SetTabBarItem(renderer);
 			}
 		}
 
@@ -256,6 +227,33 @@ namespace Xamarin.Forms.Platform.iOS
 				UpdateBarBackgroundColor();
 			else if (e.PropertyName == TabbedPage.BarTextColorProperty.PropertyName)
 				UpdateBarTextColor();
+			else if (e.PropertyName == PrefersStatusBarHiddenProperty.PropertyName)
+				UpdatePrefersStatusBarHiddenOnPages();
+			else if (e.PropertyName == PreferredStatusBarUpdateAnimationProperty.PropertyName)
+				UpdateCurrentPagePreferredStatusBarUpdateAnimation();
+		}
+
+		public override UIViewController ChildViewControllerForStatusBarHidden()
+		{
+			var current = Tabbed.CurrentPage;
+			if (current == null)
+				return null;
+
+			return GetViewController(current);
+		}
+
+		void UpdateCurrentPagePreferredStatusBarUpdateAnimation()
+		{
+			PageUIStatusBarAnimation animation = ((Page)Element).OnThisPlatform().PreferredStatusBarUpdateAnimation();
+			Tabbed.CurrentPage.OnThisPlatform().SetPreferredStatusBarUpdateAnimation(animation);
+		}
+
+		void UpdatePrefersStatusBarHiddenOnPages()
+		{
+			for (var i = 0; i < ViewControllers.Length; i++)
+			{
+				Tabbed.GetPageByIndex(i).OnThisPlatform().SetPrefersStatusBarHidden(Tabbed.OnThisPlatform().PrefersStatusBarHidden());
+			}
 		}
 
 		void Reset()
@@ -268,9 +266,9 @@ namespace Xamarin.Forms.Platform.iOS
 		void SetControllers()
 		{
 			var list = new List<UIViewController>();
-			for (var i = 0; i < ElementController.LogicalChildren.Count; i++)
+			for (var i = 0; i < Element.LogicalChildren.Count; i++)
 			{
-				var child = ElementController.LogicalChildren[i];
+				var child = Element.LogicalChildren[i];
 				var v = child as VisualElement;
 				if (v == null)
 					continue;
@@ -282,7 +280,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void SetupPage(Page page, int index)
 		{
-			var renderer = Platform.GetRenderer(page);
+			IVisualElementRenderer renderer = Platform.GetRenderer(page);
 			if (renderer == null)
 			{
 				renderer = Platform.CreateRenderer(page);
@@ -291,15 +289,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			page.PropertyChanged += OnPagePropertyChanged;
 
-			UIImage icon = null;
-			if (page.Icon != null)
-				icon = new UIImage(page.Icon);
-
-			renderer.ViewController.TabBarItem = new UITabBarItem(page.Title, icon, 0);
-			if (icon != null)
-				icon.Dispose();
-
-			renderer.ViewController.TabBarItem.Tag = index;
+			SetTabBarItem(renderer);
 		}
 
 		void TeardownPage(Page page, int index)
@@ -322,25 +312,15 @@ namespace Xamarin.Forms.Platform.iOS
 
 			if (!_defaultBarColorSet)
 			{
-				if (Forms.IsiOS7OrNewer)
-					_defaultBarColor = TabBar.BarTintColor;
-				else
-					_defaultBarColor = TabBar.TintColor;
+				_defaultBarColor = TabBar.BarTintColor;
 
 				_defaultBarColorSet = true;
 			}
 
 			if (!isDefaultColor)
 				_barBackgroundColorWasSet = true;
-
-			if (Forms.IsiOS7OrNewer)
-			{
-				TabBar.BarTintColor = isDefaultColor ? _defaultBarColor : barBackgroundColor.ToUIColor();
-			}
-			else
-			{
-				TabBar.TintColor = isDefaultColor ? _defaultBarColor : barBackgroundColor.ToUIColor();
-			}
+			
+			TabBar.BarTintColor = isDefaultColor ? _defaultBarColor : barBackgroundColor.ToUIColor();
 		}
 
 		void UpdateBarTextColor()
@@ -356,7 +336,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			if (!_defaultBarTextColorSet)
 			{
-				_defaultBarTextColor = TabBar.TintColor; 
+				_defaultBarTextColor = TabBar.TintColor;
 				_defaultBarTextColorSet = true;
 			}
 
@@ -377,10 +357,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			// set TintColor for selected icon
 			// setting the unselected icon tint is not supported by iOS
-			if (Forms.IsiOS7OrNewer)
-			{
-				TabBar.TintColor = isDefaultColor ? _defaultBarTextColor : barTextColor.ToUIColor();
-			}
+			TabBar.TintColor = isDefaultColor ? _defaultBarTextColor : barTextColor.ToUIColor();
 		}
 
 		void UpdateChildrenOrderIndex(UIViewController[] viewControllers)
@@ -390,7 +367,7 @@ namespace Xamarin.Forms.Platform.iOS
 				var originalIndex = -1;
 				if (int.TryParse(viewControllers[i].TabBarItem.Tag.ToString(), out originalIndex))
 				{
-					var page = (TabbedPage)((IPageController)Tabbed).InternalChildren[originalIndex];
+					var page = (Page)Tabbed.InternalChildren[originalIndex];
 					TabbedPage.SetIndex(page, i);
 				}
 			}
@@ -398,15 +375,49 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void UpdateCurrentPage()
 		{
-			var count = ((IPageController)Tabbed).InternalChildren.Count;
-			((TabbedPage)Element).CurrentPage = SelectedIndex >= 0 && SelectedIndex < count ? Tabbed.GetPageByIndex((int)SelectedIndex) : null;
+			var count = Tabbed.InternalChildren.Count;
+			var index = (int)SelectedIndex;
+			((TabbedPage)Element).CurrentPage = index >= 0 && index < count ? Tabbed.GetPageByIndex(index) : null;
 		}
 
 		void IEffectControlProvider.RegisterEffect(Effect effect)
 		{
-			var platformEffect = effect as PlatformEffect;
-			if (platformEffect != null)
-				platformEffect.Container = View;
+			VisualElementRenderer<VisualElement>.RegisterEffect(effect, View);
+		}
+
+		async void SetTabBarItem(IVisualElementRenderer renderer)
+		{
+			var page = renderer.Element as Page;
+			if(page == null)
+				throw new InvalidCastException($"{nameof(renderer)} must be a {nameof(Page)} renderer.");
+
+			var icons = await GetIcon(page);
+			renderer.ViewController.TabBarItem = new UITabBarItem(page.Title, icons?.Item1, icons?.Item2)
+			{
+				Tag = Tabbed.Children.IndexOf(page),
+				AccessibilityIdentifier = page.AutomationId
+			};
+			icons?.Item1?.Dispose();
+			icons?.Item2?.Dispose();
+		}
+		
+		/// <summary>
+		/// Get the icon for the tab bar item of this page
+		/// </summary>
+		/// <returns>
+		/// A tuple containing as item1: the unselected version of the icon, item2: the selected version of the icon (item2 can be null),
+		/// or null if no icon should be set.
+		/// </returns>
+		protected virtual async Task<Tuple<UIImage, UIImage>> GetIcon(Page page)
+		{
+		    if (!string.IsNullOrEmpty(page.Icon?.File))
+		    {
+				var source = Internals.Registrar.Registered.GetHandlerForObject<IImageSourceHandler>(page.Icon);
+				var icon = await source.LoadImageAsync(page.Icon);
+		        return Tuple.Create(icon, (UIImage)null);
+		    }
+		
+		    return null;
 		}
 	}
 }

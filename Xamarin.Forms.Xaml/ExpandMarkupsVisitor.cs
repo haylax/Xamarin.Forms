@@ -5,9 +5,9 @@ using Xamarin.Forms.Xaml.Internals;
 
 namespace Xamarin.Forms.Xaml
 {
-	internal class ExpandMarkupsVisitor : IXamlNodeVisitor
+	class ExpandMarkupsVisitor : IXamlNodeVisitor
 	{
-		public ExpandMarkupsVisitor(HydratationContext context)
+		public ExpandMarkupsVisitor(HydrationContext context)
 		{
 			Context = context;
 		}
@@ -17,7 +17,8 @@ namespace Xamarin.Forms.Xaml
 			XmlName.xKey,
 			XmlName.xTypeArguments,
 			XmlName.xFactoryMethod,
-			XmlName.xName
+			XmlName.xName,
+			XmlName.xDataType
 		};
 
 		Dictionary<INode, object> Values
@@ -25,22 +26,13 @@ namespace Xamarin.Forms.Xaml
 			get { return Context.Values; }
 		}
 
-		HydratationContext Context { get; }
+		HydrationContext Context { get; }
 
-		public bool VisitChildrenFirst
-		{
-			get { return true; }
-		}
-
-		public bool StopOnDataTemplate
-		{
-			get { return false; }
-		}
-
-		public bool StopOnResourceDictionary
-		{
-			get { return false; }
-		}
+		public TreeVisitingMode VisitingMode => TreeVisitingMode.BottomUp;
+		public bool StopOnDataTemplate => false;
+		public bool StopOnResourceDictionary => false;
+		public bool VisitNodeOnDataTemplate => true;
+		public bool SkipChildren(INode node, INode parentNode) => false;
 
 		public void Visit(ValueNode node, INode parentNode)
 		{

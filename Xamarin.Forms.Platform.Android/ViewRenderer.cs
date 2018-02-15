@@ -1,21 +1,46 @@
 using System;
 using System.ComponentModel;
 using Android.App;
+using Android.Content;
 using Android.OS;
 using Android.Views;
 using AView = Android.Views.View;
+using Xamarin.Forms.Platform.Android.FastRenderers;
 
 namespace Xamarin.Forms.Platform.Android
 {
 	public abstract class ViewRenderer : ViewRenderer<View, AView>
 	{
+		protected ViewRenderer(Context context) : base(context)
+		{
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use ViewRenderer(Context) instead.")]
+		protected ViewRenderer()
+		{
+		}
 	}
 
 	public abstract class ViewRenderer<TView, TNativeView> : VisualElementRenderer<TView>, AView.IOnFocusChangeListener where TView : View where TNativeView : AView
 	{
-		protected abstract TNativeView CreateNativeControl();
+		protected ViewRenderer(Context context) : base(context)
+		{
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use ViewRenderer(Context) instead.")]
+		protected ViewRenderer() 
+		{
+		}
+
+		protected virtual TNativeView CreateNativeControl()
+		{
+			return default(TNativeView);
+		}
 
 		ViewGroup _container;
+		string _defaultContentDescription;
+		bool? _defaultFocusable;
+		string _defaultHint;
 
 		bool _disposed;
 		EventHandler<VisualElement.FocusRequestArgs> _focusChangeHandler;
@@ -26,7 +51,7 @@ namespace Xamarin.Forms.Platform.Android
 
 		public TNativeView Control { get; private set; }
 
-		void IOnFocusChangeListener.OnFocusChange(AView v, bool hasFocus)
+		void AView.IOnFocusChangeListener.OnFocusChange(AView v, bool hasFocus)
 		{
 			if (Element is Entry || Element is SearchBar || Element is Editor)
 			{
@@ -63,7 +88,7 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			if (Control == null)
 				return (base.GetDesiredSize(widthConstraint, heightConstraint));
-				        
+
 			AView view = _container == this ? (AView)Control : _container;
 			view.Measure(widthConstraint, heightConstraint);
 
@@ -76,7 +101,8 @@ namespace Xamarin.Forms.Platform.Android
 			{
 				if (Control != null && ManageNativeControlLifetime)
 				{
-					Control.RemoveFromParent();
+					Control.OnFocusChangeListener = null;
+					RemoveView(Control);
 					Control.Dispose();
 					Control = null;
 				}
@@ -120,6 +146,10 @@ namespace Xamarin.Forms.Platform.Android
 
 			if (e.PropertyName == VisualElement.IsEnabledProperty.PropertyName)
 				UpdateIsEnabled();
+			else if (e.PropertyName == AutomationProperties.LabeledByProperty.PropertyName)
+				SetLabeledBy();
+			else if (e.PropertyName == VisualElement.FlowDirectionProperty.PropertyName)
+				UpdateFlowDirection();
 		}
 
 		protected override void OnLayout(bool changed, int l, int t, int r, int b)
@@ -137,18 +167,42 @@ namespace Xamarin.Forms.Platform.Android
 		protected override void OnRegisterEffect(PlatformEffect effect)
 		{
 			base.OnRegisterEffect(effect);
-			effect.Control = Control;
+			effect.SetControl(Control);
 		}
 
 		protected override void SetAutomationId(string id)
 		{
 			if (Control == null)
-				base.SetAutomationId(id);
-			else
 			{
-				ContentDescription = id + "_Container";
-				Control.ContentDescription = id;
+				base.SetAutomationId(id);
+				return;
 			}
+
+			ContentDescription = id + "_Container";
+			AutomationPropertiesProvider.SetAutomationId(Control, Element, id);
+		}
+
+		protected override void SetContentDescription()
+		{
+			if (Control == null)
+			{
+				base.SetContentDescription();
+				return;
+			}
+
+			AutomationPropertiesProvider.SetContentDescription(
+				Control, Element, ref _defaultContentDescription, ref _defaultHint);
+		}
+
+		protected override void SetFocusable()
+		{
+			if (Control == null)
+			{
+				base.SetFocusable();
+				return;
+			}
+
+			AutomationPropertiesProvider.SetFocusable(Control, Element, ref _defaultFocusable);
 		}
 
 		protected void SetNativeControl(TNativeView control)
@@ -208,6 +262,10 @@ namespace Xamarin.Forms.Platform.Android
 			_container = container;
 
 			Control = control;
+			if (Control.Id == NoId)
+			{
+				Control.Id = Platform.GenerateViewId();
+			}
 
 			AView toAdd = container == this ? control : (AView)container;
 			AddView(toAdd, LayoutParams.MatchParent);
@@ -215,12 +273,22 @@ namespace Xamarin.Forms.Platform.Android
 			Control.OnFocusChangeListener = this;
 
 			UpdateIsEnabled();
+			UpdateFlowDirection();
+			SetLabeledBy();
 		}
+
+		void SetLabeledBy()
+			=> AutomationPropertiesProvider.SetLabeledBy(Control, Element);
 
 		void UpdateIsEnabled()
 		{
 			if (Control != null)
 				Control.Enabled = Element.IsEnabled;
+		}
+
+		void UpdateFlowDirection()
+		{
+			Control.UpdateFlowDirection(Element);
 		}
 	}
 }

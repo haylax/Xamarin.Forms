@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Xamarin.Forms.Internals;
 
@@ -9,13 +10,13 @@ namespace Xamarin.Forms
 {
 	public abstract class BindableObject : INotifyPropertyChanged, IDynamicResourceHandler
 	{
-		public static readonly BindableProperty BindingContextProperty = BindableProperty.Create("BindingContext", typeof(object), typeof(BindableObject), default(object), BindingMode.OneWay, null,
-			BindingContextPropertyBindingPropertyChanged, null, null, BindingContextPropertyBindingChanging);
+		public static readonly BindableProperty BindingContextProperty =
+			BindableProperty.Create("BindingContext", typeof(object), typeof(BindableObject), default(object),
+									BindingMode.OneWay, null, BindingContextPropertyChanged, null, null, BindingContextPropertyBindingChanging);
 
 		readonly List<BindablePropertyContext> _properties = new List<BindablePropertyContext>(4);
 
 		bool _applying;
-
 		object _inheritedContext;
 
 		public object BindingContext
@@ -33,9 +34,14 @@ namespace Xamarin.Forms
 
 		public event EventHandler BindingContextChanged;
 
+		internal void ClearValue(BindableProperty property, bool fromStyle)
+		{
+			ClearValue(property, fromStyle: fromStyle, checkAccess: true);
+		}
+
 		public void ClearValue(BindableProperty property)
 		{
-			ClearValue(property, true);
+			ClearValue(property, fromStyle: false, checkAccess: true);
 		}
 
 		public void ClearValue(BindablePropertyKey propertyKey)
@@ -43,7 +49,15 @@ namespace Xamarin.Forms
 			if (propertyKey == null)
 				throw new ArgumentNullException("propertyKey");
 
-			ClearValue(propertyKey.BindableProperty, false);
+			ClearValue(propertyKey.BindableProperty, fromStyle:false, checkAccess: false);
+		}
+
+		public bool IsSet(BindableProperty targetProperty)
+		{
+			if (targetProperty == null)
+				throw new ArgumentNullException(nameof(targetProperty));
+
+			return GetContext(targetProperty) != null;
 		}
 
 		public object GetValue(BindableProperty property)
@@ -91,13 +105,18 @@ namespace Xamarin.Forms
 			SetValue(propertyKey.BindableProperty, value, false, false);
 		}
 
-		protected internal static void SetInheritedBindingContext(BindableObject bindable, object value)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public static void SetInheritedBindingContext(BindableObject bindable, object value)
 		{
 			BindablePropertyContext bpContext = bindable.GetContext(BindingContextProperty);
 			if (bpContext != null && ((bpContext.Attributes & BindableContextAttributes.IsManuallySet) != 0))
 				return;
 
 			object oldContext = bindable._inheritedContext;
+
+			if (ReferenceEquals(oldContext, value))
+				return;
+
 			if (bpContext != null && oldContext == null)
 				oldContext = bpContext.Value;
 
@@ -108,26 +127,21 @@ namespace Xamarin.Forms
 			}
 			else
 			{
-				if (ReferenceEquals(oldContext, value))
-					return;
-
 				bindable._inheritedContext = value;
 			}
 
-			bindable.ApplyBindings(oldContext);
+			bindable.ApplyBindings(skipBindingContext:false, fromBindingContextChanged:true);
 			bindable.OnBindingContextChanged();
 		}
 
-		protected void ApplyBindings(object oldContext = null)
+		protected void ApplyBindings()
 		{
-			ApplyBindings(oldContext, false);
+			ApplyBindings(skipBindingContext: false, fromBindingContextChanged: false);
 		}
 
 		protected virtual void OnBindingContextChanged()
 		{
-			EventHandler change = BindingContextChanged;
-			if (change != null)
-				change(this, EventArgs.Empty);
+			BindingContextChanged?.Invoke(this, EventArgs.Empty);
 		}
 
 		protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -146,8 +160,8 @@ namespace Xamarin.Forms
 
 		protected void UnapplyBindings()
 		{
-			foreach (BindablePropertyContext context in _properties)
-			{
+			for (int i = 0, _propertiesCount = _properties.Count; i < _propertiesCount; i++) {
+				BindablePropertyContext context = _properties [i];
 				if (context.Binding == null)
 					continue;
 
@@ -164,7 +178,16 @@ namespace Xamarin.Forms
 			return bpcontext != null && bpcontext.Binding != null;
 		}
 
-		internal object[] GetValues(BindableProperty property0, BindableProperty property1)
+		internal bool GetIsDefault(BindableProperty targetProperty)
+		{
+			if (targetProperty == null)
+				throw new ArgumentNullException(nameof(targetProperty));
+
+			return GetContext(targetProperty) == null;
+		}
+
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public object[] GetValues(BindableProperty property0, BindableProperty property1)
 		{
 			var values = new object[2];
 
@@ -195,7 +218,8 @@ namespace Xamarin.Forms
 			return values;
 		}
 
-		internal object[] GetValues(BindableProperty property0, BindableProperty property1, BindableProperty property2)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public object[] GetValues(BindableProperty property0, BindableProperty property1, BindableProperty property2)
 		{
 			var values = new object[3];
 
@@ -230,6 +254,25 @@ namespace Xamarin.Forms
 			if (!ReferenceEquals(property2, null))
 				values[2] = property2.DefaultValueCreator == null ? property2.DefaultValue : CreateAndAddContext(property2).Value;
 
+			return values;
+		}
+
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		internal object[] GetValues(params BindableProperty[] properties)
+		{
+			var values = new object[properties.Length];
+			for (var i = 0; i < _properties.Count; i++) {
+				var context = _properties[i];
+				var index = properties.IndexOf(context.Property);
+				if (index < 0)
+					continue;
+				values[index] = context.Value;
+			}
+			for (var i = 0; i < values.Length; i++) {
+				if (!ReferenceEquals(values[i], null))
+					continue;
+				values[i] = properties[i].DefaultValueCreator == null ? properties[i].DefaultValue : CreateAndAddContext(properties[i]).Value;
+			}
 			return values;
 		}
 
@@ -289,9 +332,9 @@ namespace Xamarin.Forms
 		internal void SetDynamicResource(BindableProperty property, string key, bool fromStyle)
 		{
 			if (property == null)
-				throw new ArgumentNullException("property");
+				throw new ArgumentNullException(nameof(property));
 			if (string.IsNullOrEmpty(key))
-				throw new ArgumentNullException("key");
+				throw new ArgumentNullException(nameof(key));
 
 			BindablePropertyContext context = null;
 			if (fromStyle && (context = GetContext(property)) != null && (context.Attributes & BindableContextAttributes.IsDefaultValue) == 0 &&
@@ -319,7 +362,8 @@ namespace Xamarin.Forms
 			SetValueCore(propertyKey.BindableProperty, value, attributes, SetValuePrivateFlags.None);
 		}
 
-		internal void SetValueCore(BindableProperty property, object value, SetValueFlags attributes = SetValueFlags.None)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SetValueCore(BindableProperty property, object value, SetValueFlags attributes = SetValueFlags.None)
 		{
 			SetValueCore(property, value, attributes, SetValuePrivateFlags.Default);
 		}
@@ -353,9 +397,10 @@ namespace Xamarin.Forms
 				value = property.CoerceValue(this, value);
 
 			BindablePropertyContext context = GetOrCreateContext(property);
-			if (manuallySet)
+			if (manuallySet) {
 				context.Attributes |= BindableContextAttributes.IsManuallySet;
-			else
+				context.Attributes &= ~BindableContextAttributes.IsSetFromStyle;
+			} else
 				context.Attributes &= ~BindableContextAttributes.IsManuallySet;
 
 			if (fromStyle)
@@ -393,19 +438,20 @@ namespace Xamarin.Forms
 			}
 		}
 
-		void ApplyBindings(object oldContext, bool skipBindingContext)
+		internal void ApplyBindings(bool skipBindingContext, bool fromBindingContextChanged)
 		{
-			foreach (BindablePropertyContext context in _properties.ToArray())
-			{
+			var prop = _properties.ToArray();
+			for (int i = 0, propLength = prop.Length; i < propLength; i++) {
+				BindablePropertyContext context = prop [i];
 				BindingBase binding = context.Binding;
 				if (binding == null)
 					continue;
 
-				if (skipBindingContext && context.Property == BindingContextProperty)
+				if (skipBindingContext && ReferenceEquals(context.Property, BindingContextProperty))
 					continue;
 
-				binding.Unapply();
-				binding.Apply(BindingContext, this, context.Property);
+				binding.Unapply(fromBindingContextChanged: fromBindingContextChanged);
+				binding.Apply(BindingContext, this, context.Property, fromBindingContextChanged: fromBindingContextChanged);
 			}
 		}
 
@@ -421,24 +467,28 @@ namespace Xamarin.Forms
 				newBinding.Context = context;
 		}
 
-		static void BindingContextPropertyBindingPropertyChanged(BindableObject bindable, object oldvalue, object newvalue)
+		static void BindingContextPropertyChanged(BindableObject bindable, object oldvalue, object newvalue)
 		{
-			object oldInheritedContext = bindable._inheritedContext;
 			bindable._inheritedContext = null;
-			bindable.ApplyBindings(oldInheritedContext ?? oldvalue, true);
+			bindable.ApplyBindings(skipBindingContext: true, fromBindingContextChanged:true);
 			bindable.OnBindingContextChanged();
 		}
 
-		void ClearValue(BindableProperty property, bool checkaccess)
+		void ClearValue(BindableProperty property, bool fromStyle, bool checkAccess)
 		{
 			if (property == null)
-				throw new ArgumentNullException("property");
+				throw new ArgumentNullException(nameof(property));
 
-			if (checkaccess && property.IsReadOnly)
+			if (checkAccess && property.IsReadOnly)
 				throw new InvalidOperationException(string.Format("The BindableProperty \"{0}\" is readonly.", property.PropertyName));
 
 			BindablePropertyContext bpcontext = GetContext(property);
 			if (bpcontext == null)
+				return;
+
+			if (   fromStyle && bpcontext != null
+				&& (bpcontext.Attributes & BindableContextAttributes.IsDefaultValue) != 0
+				&& (bpcontext.Attributes & BindableContextAttributes.IsSetFromStyle) == 0)
 				return;
 
 			object original = bpcontext.Value;
@@ -448,8 +498,7 @@ namespace Xamarin.Forms
 			bool same = Equals(original, newValue);
 			if (!same)
 			{
-				if (property.PropertyChanging != null)
-					property.PropertyChanging(this, original, newValue);
+				property.PropertyChanging?.Invoke(this, original, newValue);
 
 				OnPropertyChanging(property.PropertyName);
 			}
@@ -461,8 +510,7 @@ namespace Xamarin.Forms
 			if (!same)
 			{
 				OnPropertyChanged(property.PropertyName);
-				if (property.PropertyChanged != null)
-					property.PropertyChanged(this, original, newValue);
+				property.PropertyChanged?.Invoke(this, original, newValue);
 			}
 		}
 
@@ -540,7 +588,7 @@ namespace Xamarin.Forms
 			bool clearOneWayBindings = (attributes & SetValueFlags.ClearOneWayBindings) != 0;
 			bool clearTwoWayBindings = (attributes & SetValueFlags.ClearTwoWayBindings) != 0;
 
-			bool same = Equals(value, original);
+			bool same = ReferenceEquals(context.Property, BindingContextProperty) ? ReferenceEquals(value, original) : Equals(value, original);
 			if (!silent && (!same || raiseOnEqual))
 			{
 				if (property.PropertyChanging != null)
@@ -580,8 +628,7 @@ namespace Xamarin.Forms
 
 				OnPropertyChanged(property.PropertyName);
 
-				if (property.PropertyChanged != null)
-					property.PropertyChanged(this, original, value);
+				property.PropertyChanged?.Invoke(this, original, value);
 			}
 		}
 
@@ -602,16 +649,6 @@ namespace Xamarin.Forms
 			public Queue<SetValueArgs> DelayedSetters;
 			public BindableProperty Property;
 			public object Value;
-		}
-
-		[Flags]
-		internal enum SetValueFlags
-		{
-			None = 0,
-			ClearOneWayBindings = 1 << 0,
-			ClearTwoWayBindings = 1 << 1,
-			ClearDynamicResource = 1 << 2,
-			RaiseOnEqual = 1 << 3
 		}
 
 		[Flags]
@@ -642,6 +679,20 @@ namespace Xamarin.Forms
 				CurrentlyApplying = currentlyApplying;
 				Attributes = attributes;
 			}
+		}
+	}
+
+	namespace Internals
+	{
+		[Flags]
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public enum SetValueFlags
+		{
+			None = 0,
+			ClearOneWayBindings = 1 << 0,
+			ClearTwoWayBindings = 1 << 1,
+			ClearDynamicResource = 1 << 2,
+			RaiseOnEqual = 1 << 3
 		}
 	}
 }

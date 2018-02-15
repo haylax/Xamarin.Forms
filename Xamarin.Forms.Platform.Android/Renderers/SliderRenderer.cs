@@ -1,4 +1,6 @@
+using System;
 using System.ComponentModel;
+using Android.Content;
 using Android.Graphics.Drawables;
 using Android.OS;
 using Android.Widget;
@@ -7,9 +9,15 @@ namespace Xamarin.Forms.Platform.Android
 {
 	public class SliderRenderer : ViewRenderer<Slider, SeekBar>, SeekBar.IOnSeekBarChangeListener
 	{
-		double _max;
-		double _min;
+		double _max, _min;
+		bool _isTrackingChange;
 
+		public SliderRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use SliderRenderer(Context) instead.")]
 		public SliderRenderer()
 		{
 			AutoPackage = false;
@@ -23,15 +31,18 @@ namespace Xamarin.Forms.Platform.Android
 
 		void SeekBar.IOnSeekBarChangeListener.OnProgressChanged(SeekBar seekBar, int progress, bool fromUser)
 		{
-			((IElementController)Element).SetValueFromRenderer(Slider.ValueProperty, Value);
+			if (_isTrackingChange)
+				((IElementController)Element).SetValueFromRenderer(Slider.ValueProperty, Value);
 		}
 
 		void SeekBar.IOnSeekBarChangeListener.OnStartTrackingTouch(SeekBar seekBar)
 		{
+			_isTrackingChange = true;
 		}
 
 		void SeekBar.IOnSeekBarChangeListener.OnStopTrackingTouch(SeekBar seekBar)
 		{
+			_isTrackingChange = false;
 		}
 
 		protected override SeekBar CreateNativeControl()
@@ -84,20 +95,20 @@ namespace Xamarin.Forms.Platform.Android
 			base.OnLayout(changed, l, t, r, b);
 
 			BuildVersionCodes androidVersion = Build.VERSION.SdkInt;
-			if (androidVersion >= BuildVersionCodes.JellyBean)
-			{
-				// Thumb only supported JellyBean and higher
+			if (androidVersion < BuildVersionCodes.JellyBean)
+				return;
 
-				if (Control == null)
-					return;
+			// Thumb only supported JellyBean and higher
 
-				SeekBar seekbar = Control;
+			if (Control == null)
+				return;
 
-				Drawable thumb = seekbar.Thumb;
-				int thumbTop = seekbar.Height / 2 - thumb.IntrinsicHeight / 2;
+			SeekBar seekbar = Control;
 
-				thumb.SetBounds(thumb.Bounds.Left, thumbTop, thumb.Bounds.Left + thumb.IntrinsicWidth, thumbTop + thumb.IntrinsicHeight);
-			}
+			Drawable thumb = seekbar.Thumb;
+			int thumbTop = seekbar.Height / 2 - thumb.IntrinsicHeight / 2;
+
+			thumb.SetBounds(thumb.Bounds.Left, thumbTop, thumb.Bounds.Left + thumb.IntrinsicWidth, thumbTop + thumb.IntrinsicHeight);
 		}
 	}
 }

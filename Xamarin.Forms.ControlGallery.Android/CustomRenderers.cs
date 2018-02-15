@@ -16,13 +16,26 @@ using Android.Content;
 using Android.Runtime;
 using Android.Util;
 using AButton = Android.Widget.Button;
+using AView = Android.Views.View;
 using Android.OS;
 using System.Reflection;
+using Android.Text;
+using Android.Text.Method;
+using Xamarin.Forms.Controls.Issues;
 
 [assembly: ExportRenderer(typeof(Bugzilla31395.CustomContentView), typeof(CustomContentRenderer))]
 [assembly: ExportRenderer(typeof(NativeListView), typeof(NativeListViewRenderer))]
 [assembly: ExportRenderer(typeof(NativeListView2), typeof(NativeAndroidListViewRenderer))]
 [assembly: ExportRenderer(typeof(NativeCell), typeof(NativeAndroidCellRenderer))]
+
+[assembly: ExportRenderer(typeof(Bugzilla42000._42000NumericEntryNoDecimal), typeof(EntryRendererNoDecimal))]
+[assembly: ExportRenderer(typeof(Bugzilla42000._42000NumericEntryNoNegative), typeof(EntryRendererNoNegative))]
+//[assembly: ExportRenderer(typeof(AndroidHelpText.HintLabel), typeof(HintLabel))]
+[assembly: ExportRenderer(typeof(QuickCollectNavigationPage), typeof(QuickCollectNavigationPageRenderer))]
+
+
+[assembly: ExportRenderer(typeof(Xamarin.Forms.Controls.Issues.NoFlashTestNavigationPage), typeof(Xamarin.Forms.ControlGallery.Android.NoFlashTestNavigationPage))]
+
 #if PRE_APPLICATION_CLASS
 #elif FORMS_APPLICATION_ACTIVITY
 #else
@@ -33,6 +46,14 @@ namespace Xamarin.Forms.ControlGallery.Android
 	public class NativeDroidMasterDetail : Xamarin.Forms.Platform.Android.AppCompat.MasterDetailPageRenderer
 	{
 		MasterDetailPage _page;
+		bool _disposed;
+
+#pragma warning disable 618
+		public NativeDroidMasterDetail()
+#pragma warning restore 618
+		{
+			System.Diagnostics.Debug.WriteLine($">>>>> NativeDroidMasterDetail NativeDroidMasterDetail 53: This is the obsolete constructor being selected");
+		}
 
 		protected override void OnElementChanged(VisualElement oldElement, VisualElement newElement)
 		{
@@ -44,7 +65,7 @@ namespace Xamarin.Forms.ControlGallery.Android
 			}
 
 			_page = newElement as MasterDetailPage;
-			_page.PropertyChanged += Page_PropertyChanged; 
+			_page.PropertyChanged += Page_PropertyChanged;
 			_page.LayoutChanged += Page_LayoutChanged;
 		}
 
@@ -60,10 +81,18 @@ namespace Xamarin.Forms.ControlGallery.Android
 
 		protected override void Dispose(bool disposing)
 		{
+			if (_disposed)
+			{
+				return;
+			}
+
+			_disposed = true;
+
 			if (disposing && _page != null)
 			{
 				_page.LayoutChanged -= Page_LayoutChanged;
 				_page.PropertyChanged -= Page_PropertyChanged;
+				_page = null;
 			}
 
 			base.Dispose(disposing);
@@ -93,13 +122,18 @@ namespace Xamarin.Forms.ControlGallery.Android
 
 	public class NativeListViewRenderer : ViewRenderer<NativeListView, global::Android.Widget.ListView>
 	{
+#pragma warning disable 618 
 		public NativeListViewRenderer()
+#pragma warning restore 618
 		{
 		}
 
 		protected override global::Android.Widget.ListView CreateNativeControl()
 		{
+#pragma warning disable 618
+			// Disabled the warning so we have a test that this obsolete stuff still works
 			return new global::Android.Widget.ListView(Forms.Context);
+#pragma warning restore 618
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<NativeListView> e)
@@ -121,7 +155,10 @@ namespace Xamarin.Forms.ControlGallery.Android
 			{
 				// subscribe
 
+#pragma warning disable 618
+				// Disabled the warning so we have a test that this obsolete stuff still works
 				Control.Adapter = new NativeListViewAdapter(Forms.Context as Activity, e.NewElement);
+#pragma warning restore 618
 				Control.ItemClick += Clicked;
 			}
 		}
@@ -138,7 +175,10 @@ namespace Xamarin.Forms.ControlGallery.Android
 			{
 				// update the Items list in the UITableViewSource
 
+#pragma warning disable 618
+				// Disabled the warning so we have a test that this obsolete stuff still works
 				Control.Adapter = new NativeListViewAdapter(Forms.Context as Activity, Element);
+#pragma warning restore 618
 			}
 		}
 	}
@@ -217,9 +257,10 @@ namespace Xamarin.Forms.ControlGallery.Android
 			{// no view to re-use, create new
 				view = (context as Activity).LayoutInflater.Inflate(Resource.Layout.NativeAndroidCell, null);
 			}
-			else { // re-use, clear image
-				   // doesn't seem to help
-				   //view.FindViewById<ImageView> (Resource.Id.Image).Drawable.Dispose ();
+			else
+			{ // re-use, clear image
+			  // doesn't seem to help
+			  //view.FindViewById<ImageView> (Resource.Id.Image).Drawable.Dispose ();
 			}
 
 			view.FindViewById<TextView>(Resource.Id.Text1).Text = x.Name;
@@ -256,7 +297,8 @@ namespace Xamarin.Forms.ControlGallery.Android
 				}, TaskScheduler.FromCurrentSynchronizationContext());
 
 			}
-			else {
+			else
+			{
 				// clear the image
 				view.FindViewById<ImageView>(Resource.Id.Image).SetImageBitmap(null);
 			}
@@ -267,13 +309,19 @@ namespace Xamarin.Forms.ControlGallery.Android
 
 	public class NativeAndroidListViewRenderer : ViewRenderer<NativeListView2, global::Android.Widget.ListView>
 	{
+
+#pragma warning disable 618
 		public NativeAndroidListViewRenderer()
+#pragma warning restore 618
 		{
 		}
 
 		protected override global::Android.Widget.ListView CreateNativeControl()
 		{
+#pragma warning disable 618
+			// Disabled the warning so we have a test that this obsolete stuff still works
 			return new global::Android.Widget.ListView(Forms.Context);
+#pragma warning restore 618
 		}
 
 		protected override void OnElementChanged(ElementChangedEventArgs<NativeListView2> e)
@@ -294,7 +342,10 @@ namespace Xamarin.Forms.ControlGallery.Android
 			if (e.NewElement != null)
 			{
 				// subscribe
+#pragma warning disable 618
+				// Disabled the warning so we have a test that this obsolete stuff still works
 				Control.Adapter = new NativeAndroidListViewAdapter(Forms.Context as Activity, e.NewElement);
+#pragma warning restore 618
 				Control.ItemClick += Clicked;
 			}
 		}
@@ -316,7 +367,10 @@ namespace Xamarin.Forms.ControlGallery.Android
 			{
 				// update the Items list in the UITableViewSource
 
+#pragma warning disable 618
+				// Disabled the warning so we have a test that this obsolete stuff still works
 				Control.Adapter = new NativeAndroidListViewAdapter(Forms.Context as Activity, Element);
+#pragma warning restore 618
 			}
 		}
 	}
@@ -371,9 +425,10 @@ namespace Xamarin.Forms.ControlGallery.Android
 			{// no view to re-use, create new
 				view = _context.LayoutInflater.Inflate(Resource.Layout.NativeAndroidListViewCell, null);
 			}
-			else { // re-use, clear image
-				   // doesn't seem to help
-				   //view.FindViewById<ImageView> (Resource.Id.Image).Drawable.Dispose ();
+			else
+			{ // re-use, clear image
+			  // doesn't seem to help
+			  //view.FindViewById<ImageView> (Resource.Id.Image).Drawable.Dispose ();
 			}
 			view.FindViewById<TextView>(Resource.Id.Text1).Text = item.Name;
 			view.FindViewById<TextView>(Resource.Id.Text2).Text = item.Category;
@@ -408,7 +463,8 @@ namespace Xamarin.Forms.ControlGallery.Android
 					}
 				}, TaskScheduler.FromCurrentSynchronizationContext());
 			}
-			else {
+			else
+			{
 				// clear the image
 				view.FindViewById<ImageView>(Resource.Id.Image).SetImageBitmap(null);
 			}
@@ -416,10 +472,25 @@ namespace Xamarin.Forms.ControlGallery.Android
 			return view;
 		}
 	}
-	public abstract class CustomContentRenderer : ViewRenderer
+
+	[Preserve]
+	public class CustomContentRenderer : ViewRenderer
 	{
+#pragma warning disable 618
+		[Preserve]
+		public CustomContentRenderer()
+#pragma warning restore 618
+		{
+			AutoPackage = true;
+		}
+
+		protected override AView CreateNativeControl()
+		{
+			return new AView(Context);
+		}
 	}
 
+	[Preserve]
 	public class CustomNativeButton : AButton
 	{
 		public CustomNativeButton(IntPtr javaReference, JniHandleOwnership transfer) : base(javaReference, transfer)
@@ -443,7 +514,9 @@ namespace Xamarin.Forms.ControlGallery.Android
 		}
 	}
 
+#pragma warning disable 618
 	public class CustomButtonRenderer : ButtonRenderer
+#pragma warning restore 618
 	{
 		protected override AButton CreateNativeControl()
 		{
@@ -461,5 +534,116 @@ namespace Xamarin.Forms.ControlGallery.Android
 			base.OnElementChanged(e);
 		}
 	}
+
+	// Custom renderers for Bugzilla42000 demonstration purposes
+
+#pragma warning disable 618
+	public class EntryRendererNoNegative : EntryRenderer
+#pragma warning restore 618
+	{
+		protected override NumberKeyListener GetDigitsKeyListener(InputTypes inputTypes)
+		{
+			// Disable the NumberFlagSigned bit
+			inputTypes &= ~InputTypes.NumberFlagSigned;
+
+			return base.GetDigitsKeyListener(inputTypes);
+		}
+	}
+
+#pragma warning disable 618
+	public class EntryRendererNoDecimal : EntryRenderer
+#pragma warning restore 618
+	{
+		protected override NumberKeyListener GetDigitsKeyListener(InputTypes inputTypes)
+		{
+			// Disable the NumberFlagDecimal bit
+			inputTypes &= ~InputTypes.NumberFlagDecimal;
+
+			return base.GetDigitsKeyListener(inputTypes);
+		}
+	}
+
+
+	//public class HintLabel : Xamarin.Forms.Platform.Android.AppCompat.LabelRenderer
+	//{
+	//	public HintLabel()
+	//	{
+	//		Hint = AndroidHelpText.HintLabel.Success;
+	//	}
+	// }
+
+#pragma warning disable CS0618 // Leaving in old constructor so we can verify it works
+	public class NoFlashTestNavigationPage 
+#if FORMS_APPLICATION_ACTIVITY
+		: Xamarin.Forms.Platform.Android.NavigationRenderer
+#else
+		: Xamarin.Forms.Platform.Android.AppCompat.NavigationPageRenderer
+#endif
+	{
+#if !FORMS_APPLICATION_ACTIVITY
+		protected override void SetupPageTransition(global::Android.Support.V4.App.FragmentTransaction transaction, bool isPush)
+		{
+			transaction.SetTransition((int)FragmentTransit.None);
+		}
+#endif
+	}
+#pragma warning restore CS0618 // Type or member is obsolete
+
+#pragma warning disable CS0618 // Leaving in old constructor so we can verify it works
+	public class QuickCollectNavigationPageRenderer
+#if FORMS_APPLICATION_ACTIVITY
+		: Xamarin.Forms.Platform.Android.NavigationRenderer
+#else
+		: Xamarin.Forms.Platform.Android.AppCompat.NavigationPageRenderer
+#endif
+	{
+		bool _disposed;
+		NavigationPage _page;
+
+		protected override void OnElementChanged(ElementChangedEventArgs<NavigationPage> e)
+		{
+			base.OnElementChanged(e);
+
+			if (e.NewElement == null)
+			{
+				if (e.OldElement != null)
+				{
+					((IPageController)e.OldElement).InternalChildren.CollectionChanged -= OnInternalPageCollectionChanged;
+				}
+
+				return;
+			}
+
+			((IPageController)e.NewElement).InternalChildren.CollectionChanged += OnInternalPageCollectionChanged;
+		}
+
+		private void OnInternalPageCollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+		{
+			if (e.OldItems != null)
+			{
+				// Force a collection on popped to simulate the problem.
+				GC.Collect();
+			}
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (_disposed)
+			{
+				return;
+			}
+
+			_disposed = true;
+
+			if (disposing && _page != null)
+			{
+				_page.InternalChildren.CollectionChanged -= OnInternalPageCollectionChanged;
+				_page = null;
+			}
+
+			base.Dispose(disposing);
+		}
+	}
+#pragma warning restore CS0618 // Type or member is obsolete
 }
 

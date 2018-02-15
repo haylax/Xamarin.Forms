@@ -1,10 +1,18 @@
+using System;
 using System.ComponentModel;
+using Android.Content;
 using AProgressBar = Android.Widget.ProgressBar;
 
 namespace Xamarin.Forms.Platform.Android
 {
 	public class ProgressBarRenderer : ViewRenderer<ProgressBar, AProgressBar>
 	{
+		public ProgressBarRenderer(Context context) : base(context)
+		{
+			AutoPackage = false;
+		}
+
+		[Obsolete("This constructor is obsolete as of version 2.5. Please use ProgressBarRenderer(Context) instead.")]
 		public ProgressBarRenderer()
 		{
 			AutoPackage = false;
@@ -19,14 +27,16 @@ namespace Xamarin.Forms.Platform.Android
 		{
 			base.OnElementChanged(e);
 
-			if (e.OldElement == null)
+			if (e.NewElement != null)
 			{
-				var progressBar = CreateNativeControl();
+				if (Control == null)
+				{
+					var progressBar = CreateNativeControl();
 
-				SetNativeControl(progressBar);
+					SetNativeControl(progressBar);
+				}
+				UpdateProgress();
 			}
-
-			UpdateProgress();
 		}
 
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)

@@ -9,7 +9,7 @@ using Xamarin.UITest.iOS;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Bugzilla, 33578, "TableView EntryCell shows DefaultKeyboard, but after scrolling down and back a NumericKeyboard (")]
@@ -76,7 +76,6 @@ namespace Xamarin.Forms.Controls
 
 #if UITEST && __IOS__
 		[Test]
-		[Ignore("Needs Xamarin.UITest 0.18")]
 		public void Bugzilla33578Test ()
 		{
 			RunningApp.ScrollDown ();

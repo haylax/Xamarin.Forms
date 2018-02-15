@@ -1,20 +1,14 @@
 using System;
 using System.ComponentModel;
-using Xamarin.Forms.Internals;
-#if __UNIFIED__
 using UIKit;
-
-#else
-using MonoTouch.UIKit;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
 	public class CellTableViewCell : UITableViewCell, INativeElementView
 	{
 		Cell _cell;
-
 		public Action<object, PropertyChangedEventArgs> PropertyChanged;
+		bool _disposed;
 
 		public CellTableViewCell(UITableViewCellStyle style, string key) : base(style, key)
 		{
@@ -25,19 +19,17 @@ namespace Xamarin.Forms.Platform.iOS
 			get { return _cell; }
 			set
 			{
-				if (_cell == value)
+				if (this._cell == value)
 					return;
 
-				ICellController cellController = _cell;
+				if (_cell != null)
+					Device.BeginInvokeOnMainThread(_cell.SendDisappearing);
 
-				if (cellController != null)
-					Device.BeginInvokeOnMainThread(cellController.SendDisappearing);
-				
+				this._cell = value;
 				_cell = value;
-				cellController = value;
 
-				if (cellController != null)
-					Device.BeginInvokeOnMainThread(cellController.SendAppearing);
+				if (_cell != null)
+					Device.BeginInvokeOnMainThread(_cell.SendAppearing);
 			}
 		}
 
@@ -53,7 +45,7 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			var id = cell.GetType().FullName;
 
-			var renderer = (CellRenderer)Registrar.Registered.GetHandler(cell.GetType());
+			var renderer = (CellRenderer)Internals.Registrar.Registered.GetHandlerForObject<IRegisterable>(cell);
 
 			ContextActionsCell contextCell = null;
 			UITableViewCell reusableCell = null;
@@ -91,7 +83,7 @@ namespace Xamarin.Forms.Platform.iOS
 				contextCell.Update(tableView, cell, nativeCell);
 				var viewTableCell = contextCell.ContentCell as ViewCellRenderer.ViewTableCell;
 				if (viewTableCell != null)
-					viewTableCell.SupressSeparator = true;
+					viewTableCell.SupressSeparator = tableView.SeparatorStyle == UITableViewCellSeparatorStyle.None;
 				nativeCell = contextCell;
 			}
 
@@ -100,6 +92,22 @@ namespace Xamarin.Forms.Platform.iOS
 				cellWithContent.LayoutSubviews();
 
 			return nativeCell;
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (_disposed)
+				return;
+
+			if (disposing)
+			{
+				PropertyChanged = null;
+				_cell = null;
+			}
+
+			_disposed = true;
+
+			base.Dispose(disposing);
 		}
 	}
 }

@@ -19,11 +19,17 @@ namespace Xamarin.Forms.Controls
 		public Bugzilla22229()
 		{
 			InitializeComponent();
-			_prefix = Device.OnPlatform(
-				iOS: "Images/",
-				Android: "",
-				WinPhone: "Assets/"
-				);
+			switch (Device.RuntimePlatform) {
+			case Device.iOS:
+				_prefix = "Images/";
+				break;
+			case Device.Android:
+				_prefix = "";
+				break;
+			case Device.UWP:
+				_prefix = "Assets/";
+				break;
+			}
 			InitializeActionBar();
 		}
 

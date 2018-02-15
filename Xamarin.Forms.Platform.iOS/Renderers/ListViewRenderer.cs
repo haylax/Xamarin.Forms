@@ -1,28 +1,16 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Drawing;
 using System.Linq;
-using Xamarin.Forms.Internals;
-#if __UNIFIED__
-using UIKit;
+using System.Threading.Tasks;
 using Foundation;
-#else
-using MonoTouch.UIKit;
-using MonoTouch.Foundation;
-#endif
-#if __UNIFIED__
+using UIKit;
+using Xamarin.Forms.Internals;
 using RectangleF = CoreGraphics.CGRect;
 using SizeF = CoreGraphics.CGSize;
-using PointF = CoreGraphics.CGPoint;
-
-#else
-using nfloat=System.Single;
-using nint=System.Int32;
-using nuint=System.UInt32;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -37,11 +25,20 @@ namespace Xamarin.Forms.Platform.iOS
 		KeyboardInsetTracker _insetTracker;
 		RectangleF _previousFrame;
 		ScrollToRequestedEventArgs _requestedScroll;
-		bool _shouldEstimateRowHeight = true;
+
 		FormsUITableViewController _tableViewController;
-		IListViewController Controller => Element;
+		ListView ListView => Element;
 		ITemplatedItemsView<Cell> TemplatedItemsView => Element;
 		public override UIViewController ViewController => _tableViewController;
+		bool _disposed;
+		protected UITableViewRowAnimation InsertRowsAnimation { get; set; } = UITableViewRowAnimation.Automatic;
+		protected UITableViewRowAnimation DeleteRowsAnimation { get; set; } = UITableViewRowAnimation.Automatic;
+		protected UITableViewRowAnimation ReloadRowsAnimation { get; set; } = UITableViewRowAnimation.Automatic;
+		protected UITableViewRowAnimation ReloadSectionsAnimation
+		{
+			get { return _dataSource.ReloadSectionsAnimation; }
+			set { _dataSource.ReloadSectionsAnimation = value; }
+		}
 
 		public override SizeRequest GetDesiredSize(double widthConstraint, double heightConstraint)
 		{
@@ -103,27 +100,39 @@ namespace Xamarin.Forms.Platform.iOS
 			}
 		}
 
+		void DisposeSubviews(UIView view)
+		{
+			var ver = view as IVisualElementRenderer;
+
+			if (ver == null)
+			{
+				// VisualElementRenderers should implement their own dispose methods that will appropriately dispose and remove their child views.
+				// Attempting to do this work twice could cause a SIGSEGV (only observed in iOS8), so don't do this work here.
+				// Non-renderer views, such as separator lines, etc., can be removed here.
+				foreach (UIView subView in view.Subviews)
+					DisposeSubviews(subView);
+
+				view.RemoveFromSuperview();
+			}
+
+			view.Dispose();
+		}
+
 		protected override void Dispose(bool disposing)
 		{
-			// check inset tracker for null to 
-			if (disposing && _insetTracker != null)
-			{
-				_insetTracker.Dispose();
-				_insetTracker = null;
+			if (_disposed)
+				return;
 
-				var viewsToLookAt = new Stack<UIView>(Subviews);
-				while (viewsToLookAt.Count > 0)
+			if (disposing)
+			{
+				if (_insetTracker != null)
 				{
-					var view = viewsToLookAt.Pop();
-					var viewCellRenderer = view as ViewCellRenderer.ViewTableCell;
-					if (viewCellRenderer != null)
-						viewCellRenderer.Dispose();
-					else
-					{
-						foreach (var child in view.Subviews)
-							viewsToLookAt.Push(child);
-					}
+					_insetTracker.Dispose();
+					_insetTracker = null;
 				}
+
+				foreach (UIView subview in Subviews)
+					DisposeSubviews(subview);
 
 				if (Element != null)
 				{
@@ -132,40 +141,43 @@ namespace Xamarin.Forms.Platform.iOS
 					templatedItems.GroupedCollectionChanged -= OnGroupedCollectionChanged;
 				}
 
+				if (_dataSource != null)
+				{
+					_dataSource.Dispose();
+					_dataSource = null;
+				}
+
 				if (_tableViewController != null)
 				{
 					_tableViewController.Dispose();
 					_tableViewController = null;
 				}
-			}
 
-			if (disposing)
-			{
 				if (_headerRenderer != null)
 				{
-					var platform = _headerRenderer.Element.Platform as Platform;
-					if (platform != null)
-						platform.DisposeModelAndChildrenRenderers(_headerRenderer.Element);
+					var platform = _headerRenderer.Element?.Platform as Platform;
+					platform?.DisposeModelAndChildrenRenderers(_headerRenderer.Element);
 					_headerRenderer = null;
 				}
 				if (_footerRenderer != null)
 				{
-					var platform = _footerRenderer.Element.Platform as Platform;
-					if (platform != null)
-						platform.DisposeModelAndChildrenRenderers(_footerRenderer.Element);
+					var platform = _footerRenderer.Element?.Platform as Platform;
+					platform?.DisposeModelAndChildrenRenderers(_footerRenderer.Element);
 					_footerRenderer = null;
 				}
 
-				var headerView = Controller?.HeaderElement as VisualElement;
+				var headerView = ListView?.HeaderElement as VisualElement;
 				if (headerView != null)
 					headerView.MeasureInvalidated -= OnHeaderMeasureInvalidated;
 				Control?.TableHeaderView?.Dispose();
 
-				var footerView = Controller?.FooterElement as VisualElement;
+				var footerView = ListView?.FooterElement as VisualElement;
 				if (footerView != null)
 					footerView.MeasureInvalidated -= OnFooterMeasureInvalidated;
 				Control?.TableFooterView?.Dispose();
 			}
+
+			_disposed = true;
 
 			base.Dispose(disposing);
 		}
@@ -176,16 +188,16 @@ namespace Xamarin.Forms.Platform.iOS
 
 			if (e.OldElement != null)
 			{
-				var controller = (IListViewController)e.OldElement;
-				var headerView = (VisualElement)controller.HeaderElement;
+				var listView = e.OldElement;
+				var headerView = (VisualElement)listView.HeaderElement;
 				if (headerView != null)
 					headerView.MeasureInvalidated -= OnHeaderMeasureInvalidated;
 
-				var footerView = (VisualElement)controller.FooterElement;
+				var footerView = (VisualElement)listView.FooterElement;
 				if (footerView != null)
 					footerView.MeasureInvalidated -= OnFooterMeasureInvalidated;
 
-				controller.ScrollToRequested -= OnScrollToRequested;
+				listView.ScrollToRequested -= OnScrollToRequested;
 				var templatedItems = ((ITemplatedItemsView<Cell>)e.OldElement).TemplatedItems;
 
 				templatedItems.CollectionChanged -= OnCollectionChanged;
@@ -208,11 +220,10 @@ namespace Xamarin.Forms.Platform.iOS
 						Control.SetContentOffset(offset, true);
 					});
 				}
-				_shouldEstimateRowHeight = true;
 
-				var controller = (IListViewController)e.NewElement;
+				var listView = e.NewElement;
 
-				controller.ScrollToRequested += OnScrollToRequested;
+				listView.ScrollToRequested += OnScrollToRequested;
 				var templatedItems = ((ITemplatedItemsView<Cell>)e.NewElement).TemplatedItems;
 
 				templatedItems.CollectionChanged += OnCollectionChanged;
@@ -241,22 +252,22 @@ namespace Xamarin.Forms.Platform.iOS
 		protected override void OnElementPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{
 			base.OnElementPropertyChanged(sender, e);
-			if (e.PropertyName == ListView.RowHeightProperty.PropertyName)
+			if (e.PropertyName == Xamarin.Forms.ListView.RowHeightProperty.PropertyName)
 				UpdateRowHeight();
-			else if (e.PropertyName == ListView.IsGroupingEnabledProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.ListView.IsGroupingEnabledProperty.PropertyName)
 				_dataSource.UpdateGrouping();
-			else if (e.PropertyName == ListView.HasUnevenRowsProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.ListView.HasUnevenRowsProperty.PropertyName)
 			{
 				_estimatedRowHeight = false;
 				Control.Source = _dataSource = Element.HasUnevenRows ? new UnevenListViewDataSource(_dataSource) : new ListViewDataSource(_dataSource);
 			}
-			else if (e.PropertyName == ListView.IsPullToRefreshEnabledProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.ListView.IsPullToRefreshEnabledProperty.PropertyName)
 				UpdatePullToRefreshEnabled();
-			else if (e.PropertyName == ListView.IsRefreshingProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.ListView.IsRefreshingProperty.PropertyName)
 				UpdateIsRefreshing();
-			else if (e.PropertyName == ListView.SeparatorColorProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.ListView.SeparatorColorProperty.PropertyName)
 				UpdateSeparatorColor();
-			else if (e.PropertyName == ListView.SeparatorVisibilityProperty.PropertyName)
+			else if (e.PropertyName == Xamarin.Forms.ListView.SeparatorVisibilityProperty.PropertyName)
 				UpdateSeparatorVisibility();
 			else if (e.PropertyName == "HeaderElement")
 				UpdateHeader();
@@ -331,7 +342,7 @@ namespace Xamarin.Forms.Platform.iOS
 			Control.TableHeaderView = _headerRenderer.NativeView;
 		}
 
-		void OnScrollToRequested(object sender, ScrollToRequestedEventArgs e)
+		async void OnScrollToRequested(object sender, ScrollToRequestedEventArgs e)
 		{
 			if (Superview == null)
 			{
@@ -341,6 +352,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 			var position = GetScrollPosition(e.Position);
 			var scrollArgs = (ITemplatedItemsListScrollToRequestedEventArgs)e;
+
 			var templatedItems = TemplatedItemsView.TemplatedItems;
 			if (Element.IsGroupingEnabled)
 			{
@@ -352,7 +364,15 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				var index = templatedItems.GetGlobalIndexOfItem(scrollArgs.Item);
 				if (index != -1)
+				{
+					Control.Layer.RemoveAllAnimations();
+					//iOS11 hack
+					if (Forms.IsiOS11OrNewer)
+					{
+						await Task.Delay(1);
+					}
 					Control.ScrollToRow(NSIndexPath.FromRowSection(index, 0), position, e.ShouldAnimate);
+				}
 			}
 		}
 
@@ -361,38 +381,38 @@ namespace Xamarin.Forms.Platform.iOS
 			if (_estimatedRowHeight)
 				return;
 
-			var rowHeight = Element.RowHeight;
-			if (Element.HasUnevenRows && rowHeight == -1)
+			// if even rows OR uneven rows but user specified a row height anyway...
+			if (!Element.HasUnevenRows || Element.RowHeight != -1)
 			{
-				var source = _dataSource as UnevenListViewDataSource;
-				if (_shouldEstimateRowHeight)
-				{
-					var templatedItems = TemplatedItemsView.TemplatedItems;
-					if (templatedItems.Count > 0 && source != null)
-					{
-						var estimatedHeightFromFirstCell = source.CalculateHeightForCell(Control, templatedItems.First());
-						Control.EstimatedRowHeight = estimatedHeightFromFirstCell;
-						_estimatedRowHeight = true;
-					}
-					else
-					{
-						//We need to set a default estimated row height, because re-setting it later(when we have items on the TIL)
-						//will cause the UITableView to reload, and throw an Exception
-						Control.EstimatedRowHeight = DefaultRowHeight;
-					}
-				}
-			}
-			else
-			{
-				if (Forms.IsiOS7OrNewer)
-					Control.EstimatedRowHeight = 0;
+				Control.EstimatedRowHeight = 0;
 				_estimatedRowHeight = true;
+				return;
 			}
+
+			var source = _dataSource as UnevenListViewDataSource;
+
+			// We want to make sure we reset the cached defined row heights whenever this is called.
+			// Failing to do this will regress Bugzilla 43313 
+			// (strange animation when adding rows with uneven heights)
+			//source?.CacheDefinedRowHeights();
+
+			if (source == null)
+			{
+				// We need to set a default estimated row height, 
+				// because re-setting it later(when we have items on the TIL)
+				// will cause the UITableView to reload, and throw an Exception
+				Control.EstimatedRowHeight = DefaultRowHeight;
+				return;
+			}
+
+			Control.EstimatedRowHeight = source.GetEstimatedRowHeight(Control);
+			_estimatedRowHeight = true;
+			return;
 		}
 
 		void UpdateFooter()
 		{
-			var footer = Controller.FooterElement;
+			var footer = ListView.FooterElement;
 			var footerView = (View)footer;
 
 			if (footerView != null)
@@ -400,7 +420,9 @@ namespace Xamarin.Forms.Platform.iOS
 				if (_footerRenderer != null)
 				{
 					_footerRenderer.Element.MeasureInvalidated -= OnFooterMeasureInvalidated;
-					if (footer != null && _footerRenderer.GetType() == Registrar.Registered.GetHandlerType(footer.GetType()))
+					var reflectableType = _footerRenderer as System.Reflection.IReflectableType;
+					var rendererType = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : _footerRenderer.GetType();
+					if (footer != null && rendererType == Internals.Registrar.Registered.GetHandlerTypeForObject(footer))
 					{
 						_footerRenderer.SetElement(footerView);
 						return;
@@ -426,6 +448,8 @@ namespace Xamarin.Forms.Platform.iOS
 			else if (_footerRenderer != null)
 			{
 				Control.TableFooterView = null;
+				_footerRenderer.Element.MeasureInvalidated -= OnFooterMeasureInvalidated;
+
 				var platform = _footerRenderer.Element.Platform as Platform;
 				if (platform != null)
 					platform.DisposeModelAndChildrenRenderers(_footerRenderer.Element);
@@ -436,7 +460,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void UpdateHeader()
 		{
-			var header = Controller.HeaderElement;
+			var header = ListView.HeaderElement;
 			var headerView = (View)header;
 
 			if (headerView != null)
@@ -444,7 +468,9 @@ namespace Xamarin.Forms.Platform.iOS
 				if (_headerRenderer != null)
 				{
 					_headerRenderer.Element.MeasureInvalidated -= OnHeaderMeasureInvalidated;
-					if (header != null && _headerRenderer.GetType() == Registrar.Registered.GetHandlerType(header.GetType()))
+					var reflectableType = _headerRenderer as System.Reflection.IReflectableType;
+					var rendererType = reflectableType != null ? reflectableType.GetTypeInfo().AsType() : _headerRenderer.GetType();
+					if (header != null && rendererType == Internals.Registrar.Registered.GetHandlerTypeForObject(header))
 					{
 						_headerRenderer.SetElement(headerView);
 						return;
@@ -470,6 +496,8 @@ namespace Xamarin.Forms.Platform.iOS
 			else if (_headerRenderer != null)
 			{
 				Control.TableHeaderView = null;
+				_headerRenderer.Element.MeasureInvalidated -= OnHeaderMeasureInvalidated;
+
 				var platform = _headerRenderer.Element.Platform as Platform;
 				if (platform != null)
 					platform.DisposeModelAndChildrenRenderers(_headerRenderer.Element);
@@ -493,15 +521,24 @@ namespace Xamarin.Forms.Platform.iOS
 
 			var groupReset = resetWhenGrouped && Element.IsGroupingEnabled;
 
+			if (!groupReset)
+			{
+				var lastIndex = Control.NumberOfRowsInSection(section);
+				if (e.NewStartingIndex > lastIndex || e.OldStartingIndex > lastIndex)
+					throw new ArgumentException(
+						$"Index '{Math.Max(e.NewStartingIndex, e.OldStartingIndex)}' is greater than the number of rows '{lastIndex}'.");
+			}
+
 			switch (e.Action)
 			{
 				case NotifyCollectionChangedAction.Add:
+
 					UpdateEstimatedRowHeight();
 					if (e.NewStartingIndex == -1 || groupReset)
 						goto case NotifyCollectionChangedAction.Reset;
-					Control.BeginUpdates();
-					Control.InsertRows(GetPaths(section, e.NewStartingIndex, e.NewItems.Count), UITableViewRowAnimation.Automatic);
 
+					Control.BeginUpdates();
+					Control.InsertRows(GetPaths(section, e.NewStartingIndex, e.NewItems.Count), InsertRowsAnimation);
 					Control.EndUpdates();
 
 					break;
@@ -510,7 +547,7 @@ namespace Xamarin.Forms.Platform.iOS
 					if (e.OldStartingIndex == -1 || groupReset)
 						goto case NotifyCollectionChangedAction.Reset;
 					Control.BeginUpdates();
-					Control.DeleteRows(GetPaths(section, e.OldStartingIndex, e.OldItems.Count), UITableViewRowAnimation.Automatic);
+					Control.DeleteRows(GetPaths(section, e.OldStartingIndex, e.OldItems.Count), DeleteRowsAnimation);
 
 					Control.EndUpdates();
 
@@ -547,7 +584,7 @@ namespace Xamarin.Forms.Platform.iOS
 					if (e.OldStartingIndex == -1 || groupReset)
 						goto case NotifyCollectionChangedAction.Reset;
 					Control.BeginUpdates();
-					Control.ReloadRows(GetPaths(section, e.OldStartingIndex, e.OldItems.Count), UITableViewRowAnimation.Automatic);
+					Control.ReloadRows(GetPaths(section, e.OldStartingIndex, e.OldItems.Count), ReloadRowsAnimation);
 					Control.EndUpdates();
 
 					if (_estimatedRowHeight && e.OldStartingIndex == 0)
@@ -566,7 +603,7 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			if (_tableViewController != null)
 			{
-				var isPullToRequestEnabled = Element.IsPullToRefreshEnabled && Controller.RefreshAllowed;
+				var isPullToRequestEnabled = Element.IsPullToRefreshEnabled && ListView.RefreshAllowed;
 				_tableViewController.UpdatePullToRefreshEnabled(isPullToRequestEnabled);
 			}
 		}
@@ -574,11 +611,9 @@ namespace Xamarin.Forms.Platform.iOS
 		void UpdateRowHeight()
 		{
 			var rowHeight = Element.RowHeight;
-			if (Element.HasUnevenRows && rowHeight == -1 && Forms.IsiOS7OrNewer)
-			{
-				if (Forms.IsiOS8OrNewer)
-					Control.RowHeight = UITableView.AutomaticDimension;
-			}
+
+			if (Element.HasUnevenRows && rowHeight == -1)
+				Control.RowHeight = UITableView.AutomaticDimension;
 			else
 				Control.RowHeight = rowHeight <= 0 ? DefaultRowHeight : rowHeight;
 		}
@@ -611,6 +646,8 @@ namespace Xamarin.Forms.Platform.iOS
 		internal class UnevenListViewDataSource : ListViewDataSource
 		{
 			IVisualElementRenderer _prototype;
+			bool _disposed;
+			Dictionary<object, Cell> _prototypicalCellByTypeOrDataTemplate = new Dictionary<object, Cell>();
 
 			public UnevenListViewDataSource(ListView list, FormsUITableViewController uiTableViewController) : base(list, uiTableViewController)
 			{
@@ -620,17 +657,93 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 			}
 
+			internal nfloat GetEstimatedRowHeight(UITableView table)
+			{
+				if (List.RowHeight != -1)
+				{
+					// Not even sure we need this case; A list with HasUnevenRows and a RowHeight doesn't make a ton of sense
+					// Anyway, no need for an estimate, because the heights we'll use are known
+					return 0;
+				}
+
+				var templatedItems = TemplatedItemsView.TemplatedItems;
+
+				if (templatedItems.Count == 0)
+				{
+					// No cells to provide an estimate, use the default row height constant
+					return DefaultRowHeight;
+				}
+
+				// We're going to base our estimate off of the first cell
+				var isGroupingEnabled = List.IsGroupingEnabled;
+
+				if (isGroupingEnabled)
+					templatedItems = templatedItems.GetGroup(0);
+
+				object item = null;
+				if (templatedItems == null || templatedItems.ListProxy.TryGetValue(0, out item) == false)
+					return DefaultRowHeight;
+
+				var firstCell = templatedItems.ActivateContent(0, item);
+
+				// Let's skip this optimization for grouped lists. It will likely cause more trouble than it's worth.
+				if (firstCell?.Height > 0 && !isGroupingEnabled)
+				{
+					// Seems like we've got cells which already specify their height; since the heights are known,
+					// we don't need to use estimatedRowHeight at all; zero will disable it and use the known heights.
+					// However, not setting the EstimatedRowHeight will drastically degrade performance with large lists.
+					// In this case, we will cache the specified cell heights asynchronously, which will be returned one time on
+					// table load by EstimatedHeight. 
+
+					return 0;
+				}
+
+				return CalculateHeightForCell(table, firstCell);
+			}
+
+			internal override void InvalidatePrototypicalCellCache()
+			{
+				_prototypicalCellByTypeOrDataTemplate.Clear();
+			}
+
+			internal Cell GetPrototypicalCell(NSIndexPath indexPath)
+			{
+				var itemTypeOrDataTemplate = default(object);
+
+				var cachingStrategy = List.CachingStrategy;
+				if (cachingStrategy == ListViewCachingStrategy.RecycleElement)
+					itemTypeOrDataTemplate = GetDataTemplateForPath(indexPath);
+
+				else if (cachingStrategy == ListViewCachingStrategy.RecycleElementAndDataTemplate)
+					itemTypeOrDataTemplate = GetItemTypeForPath(indexPath);
+
+				else // ListViewCachingStrategy.RetainElement
+					return GetCellForPath(indexPath);
+
+
+				Cell protoCell;
+				if (!_prototypicalCellByTypeOrDataTemplate.TryGetValue(itemTypeOrDataTemplate, out protoCell))
+				{
+					// cache prototypical cell by item type; Items of the same Type share
+					// the same DataTemplate (this is enforced by RecycleElementAndDataTemplate)
+					protoCell = GetCellForPath(indexPath);
+					_prototypicalCellByTypeOrDataTemplate[itemTypeOrDataTemplate] = protoCell;
+				}
+
+				var templatedItems = GetTemplatedItemsListForPath(indexPath);
+				return templatedItems.UpdateContent(protoCell, indexPath.Row);
+			}
+
 			public override nfloat GetHeightForRow(UITableView tableView, NSIndexPath indexPath)
 			{
-				var cell = GetCellForPath(indexPath);
+				// iOS may ask for a row we have just deleted and hence cannot rebind in order to measure height.
+				if (!IsValidIndexPath(indexPath))
+					return DefaultRowHeight;
+
+				var cell = GetPrototypicalCell(indexPath);
 
 				if (List.RowHeight == -1 && cell.Height == -1 && cell is ViewCell)
-				{
-					// only doing ViewCell because its the only one that matters (the others dont adjust ANYWAY)
-					if (Forms.IsiOS8OrNewer)
-						return UITableView.AutomaticDimension;
-					return CalculateHeightForCell(tableView, cell);
-				}
+					return UITableView.AutomaticDimension;
 
 				var renderHeight = cell.RenderHeight;
 				return renderHeight > 0 ? (nfloat)renderHeight : DefaultRowHeight;
@@ -643,26 +756,54 @@ namespace Xamarin.Forms.Platform.iOS
 				{
 					var target = viewCell.View;
 					if (_prototype == null)
-					{
 						_prototype = Platform.CreateRenderer(target);
-						Platform.SetRenderer(target, _prototype);
-					}
 					else
-					{
 						_prototype.SetElement(target);
-						Platform.SetRenderer(target, _prototype);
-					}
+
+					Platform.SetRenderer(target, _prototype);
 
 					var req = target.Measure(tableView.Frame.Width, double.PositiveInfinity, MeasureFlags.IncludeMargins);
 
 					target.ClearValue(Platform.RendererProperty);
-					foreach (var descendant in target.Descendants())
-						descendant.ClearValue(Platform.RendererProperty);
+					foreach (Element descendant in target.Descendants())
+					{
+						IVisualElementRenderer renderer = Platform.GetRenderer(descendant as VisualElement);
 
-					return (nfloat)req.Request.Height;
+						// Clear renderer from descendent; this will not happen in Dispose as normal because we need to
+						// unhook the Element from the renderer before disposing it.
+						descendant.ClearValue(Platform.RendererProperty);
+						renderer?.Dispose();
+						renderer = null;
+					}
+
+					// Let the EstimatedHeight method know to use this value.
+					// Much more efficient than checking the value each time.
+					//_useEstimatedRowHeight = true;
+					var height = (nfloat)req.Request.Height;
+					return height > 1 ? height : DefaultRowHeight;
 				}
+
 				var renderHeight = cell.RenderHeight;
 				return renderHeight > 0 ? (nfloat)renderHeight : DefaultRowHeight;
+			}
+
+			protected override void Dispose(bool disposing)
+			{
+				if (_disposed)
+					return;
+
+				_disposed = true;
+
+				if (disposing)
+				{
+					if (_prototype != null)
+					{
+						_prototype.Dispose();
+						_prototype = null;
+					}
+				}
+
+				base.Dispose(disposing);
 			}
 		}
 
@@ -671,14 +812,15 @@ namespace Xamarin.Forms.Platform.iOS
 			const int DefaultItemTemplateId = 1;
 			static int s_dataTemplateIncrementer = 2; // lets start at not 0 because
 			readonly nfloat _defaultSectionHeight;
-			readonly Dictionary<DataTemplate, int> _templateToId = new Dictionary<DataTemplate, int>();
-			readonly UITableView _uiTableView;
-			readonly FormsUITableViewController _uiTableViewController;
-			protected readonly ListView List;
-			IListViewController Controller => List;
-			ITemplatedItemsView<Cell> TemplatedItemsView => List;
+			Dictionary<DataTemplate, int> _templateToId = new Dictionary<DataTemplate, int>();
+			UITableView _uiTableView;
+			FormsUITableViewController _uiTableViewController;
+			protected ListView List;
+			protected ITemplatedItemsView<Cell> TemplatedItemsView => List;
 			bool _isDragging;
 			bool _selectionFromNative;
+			bool _disposed;
+			public UITableViewRowAnimation ReloadSectionsAnimation { get; set; } = UITableViewRowAnimation.Automatic;
 
 			public ListViewDataSource(ListViewDataSource source)
 			{
@@ -695,7 +837,7 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				_uiTableViewController = uiTableViewController;
 				_uiTableView = uiTableViewController.TableView;
-				_defaultSectionHeight = Forms.IsiOS8OrNewer ? DefaultRowHeight : _uiTableView.SectionHeaderHeight;
+				_defaultSectionHeight = DefaultRowHeight;
 				List = list;
 				List.ItemSelected += OnItemSelected;
 				UpdateShortNameListener();
@@ -708,6 +850,10 @@ namespace Xamarin.Forms.Platform.iOS
 			UIColor DefaultBackgroundColor
 			{
 				get { return UIColor.Clear; }
+			}
+
+			internal virtual void InvalidatePrototypicalCellCache()
+			{
 			}
 
 			public override void DraggingEnded(UIScrollView scrollView, bool willDecelerate)
@@ -723,31 +869,37 @@ namespace Xamarin.Forms.Platform.iOS
 
 			public override UITableViewCell GetCell(UITableView tableView, NSIndexPath indexPath)
 			{
-				UITableViewCell nativeCell = null;
+				Cell cell;
+				UITableViewCell nativeCell;
 
-				var cachingStrategy = Controller.CachingStrategy;
+				var reference = Guid.NewGuid().ToString();
+				Performance.Start(reference);
+
+				var cachingStrategy = List.CachingStrategy;
 				if (cachingStrategy == ListViewCachingStrategy.RetainElement)
 				{
-					var cell = GetCellForPath(indexPath);
+					cell = GetCellForPath(indexPath);
 					nativeCell = CellTableViewCell.GetNativeCell(tableView, cell);
 				}
-				else if (cachingStrategy == ListViewCachingStrategy.RecycleElement)
+				else if ((cachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
 				{
 					var id = TemplateIdForPath(indexPath);
 					nativeCell = tableView.DequeueReusableCell(ContextActionsCell.Key + id);
 					if (nativeCell == null)
 					{
-						var cell = GetCellForPath(indexPath);
+						cell = GetCellForPath(indexPath);
+
 						nativeCell = CellTableViewCell.GetNativeCell(tableView, cell, true, id.ToString());
 					}
 					else
 					{
 						var templatedList = TemplatedItemsView.TemplatedItems.GetGroup(indexPath.Section);
-						var cell = (Cell)((INativeElementView)nativeCell).Element;
-						ICellController controller = cell;
-						controller.SendDisappearing();
+
+						cell = (Cell)((INativeElementView)nativeCell).Element;
+						cell.SendDisappearing();
+
 						templatedList.UpdateContent(cell, indexPath.Row);
-						controller.SendAppearing();
+						cell.SendAppearing();
 					}
 				}
 				else
@@ -756,7 +908,8 @@ namespace Xamarin.Forms.Platform.iOS
 				var bgColor = tableView.IndexPathForSelectedRow != null && tableView.IndexPathForSelectedRow.Equals(indexPath) ? UIColor.Clear : DefaultBackgroundColor;
 
 				SetCellBackgroundColor(nativeCell, bgColor);
-
+				PreserveActivityIndicatorState(cell);
+				Performance.Stop(reference);
 				return nativeCell;
 			}
 
@@ -777,21 +930,30 @@ namespace Xamarin.Forms.Platform.iOS
 
 			public override UIView GetViewForHeader(UITableView tableView, nint section)
 			{
-				if (List.IsGroupingEnabled && List.GroupHeaderTemplate != null)
-				{
-					var cell = TemplatedItemsView.TemplatedItems[(int)section];
-					if (cell.HasContextActions)
-						throw new NotSupportedException("Header cells do not support context actions");
+				UIView view = null;
 
-					var renderer = (CellRenderer)Registrar.Registered.GetHandler(cell.GetType());
+				if (!List.IsGroupingEnabled)
+					return view;
 
-					var view = new HeaderWrapperView();
+				var cell = TemplatedItemsView.TemplatedItems[(int)section];
+				if (cell.HasContextActions)
+					throw new NotSupportedException("Header cells do not support context actions");
+
+					var renderer = (CellRenderer)Internals.Registrar.Registered.GetHandlerForObject<IRegisterable>(cell);
+
+					view = new HeaderWrapperView();
 					view.AddSubview(renderer.GetCell(cell, null, tableView));
 
-					return view;
-				}
+				return view;
+			}
 
-				return null;
+			public override void HeaderViewDisplayingEnded(UITableView tableView, UIView headerView, nint section)
+			{
+				if (!List.IsGroupingEnabled)
+					return;
+
+				var cell = TemplatedItemsView.TemplatedItems[(int)section];
+				cell.SendDisappearing();
 			}
 
 			public override nint NumberOfSections(UITableView tableView)
@@ -809,6 +971,9 @@ namespace Xamarin.Forms.Platform.iOS
 					_selectionFromNative = false;
 					return;
 				}
+
+				if (List == null)
+					return;
 
 				var location = TemplatedItemsView.TemplatedItems.GetGroupAndIndexOfItem(eventArg.SelectedItem);
 				if (location.Item1 == -1 || location.Item2 == -1)
@@ -853,7 +1018,7 @@ namespace Xamarin.Forms.Platform.iOS
 					return;
 
 				Cell formsCell = null;
-				if (Controller.CachingStrategy == ListViewCachingStrategy.RecycleElement)
+				if ((List.CachingStrategy & ListViewCachingStrategy.RecycleElement) != 0)
 					formsCell = (Cell)((INativeElementView)cell).Element;
 
 				SetCellBackgroundColor(cell, UIColor.Clear);
@@ -861,7 +1026,7 @@ namespace Xamarin.Forms.Platform.iOS
 				_selectionFromNative = true;
 
 				tableView.EndEditing(true);
-				Controller.NotifyRowTapped(indexPath.Section, indexPath.Row, formsCell);
+				List.NotifyRowTapped(indexPath.Section, indexPath.Row, formsCell);
 			}
 
 			public override nint RowsInSection(UITableView tableview, nint section)
@@ -898,16 +1063,10 @@ namespace Xamarin.Forms.Platform.iOS
 				return templatedItems.ShortNames.ToArray();
 			}
 
-			public override string TitleForHeader(UITableView tableView, nint section)
+			public void Cleanup()
 			{
-				if (!List.IsGroupingEnabled)
-					return null;
-
-				var sl = GetSectionList((int)section);
-				sl.PropertyChanged -= OnSectionPropertyChanged;
-				sl.PropertyChanged += OnSectionPropertyChanged;
-
-				return sl.Name;
+				_selectionFromNative = false;
+				_isDragging = false;
 			}
 
 			public void UpdateGrouping()
@@ -916,35 +1075,49 @@ namespace Xamarin.Forms.Platform.iOS
 				_uiTableView.ReloadData();
 			}
 
-			protected Cell GetCellForPath(NSIndexPath indexPath)
+			protected bool IsValidIndexPath(NSIndexPath indexPath)
 			{
 				var templatedItems = TemplatedItemsView.TemplatedItems;
 				if (List.IsGroupingEnabled)
-					templatedItems = (TemplatedItemsList<ItemsView<Cell>, Cell>)((IList)templatedItems)[indexPath.Section];
-
-				var cell = templatedItems[indexPath.Row];
-				return cell;
-			}
-
-			ITemplatedItemsList<Cell> GetSectionList(int section)
-			{
-				return (ITemplatedItemsList<Cell>)((IList)TemplatedItemsView.TemplatedItems)[section];
-			}
-
-			void OnSectionPropertyChanged(object sender, PropertyChangedEventArgs e)
-			{
-				var currentSelected = _uiTableView.IndexPathForSelectedRow;
-
-				var til = (TemplatedItemsList<ItemsView<Cell>, Cell>)sender;
-				var groupIndex = ((IList)TemplatedItemsView.TemplatedItems).IndexOf(til);
-				if (groupIndex == -1)
 				{
-					til.PropertyChanged -= OnSectionPropertyChanged;
-					return;
+					var section = indexPath.Section;
+					if (section < 0 || section >= templatedItems.Count)
+						return false;
+
+					templatedItems = (ITemplatedItemsList<Cell>)((IList)templatedItems)[indexPath.Section];
 				}
 
-				_uiTableView.ReloadSections(NSIndexSet.FromIndex(groupIndex), UITableViewRowAnimation.Automatic);
-				_uiTableView.SelectRow(currentSelected, false, UITableViewScrollPosition.None);
+				return templatedItems.ListProxy.TryGetValue(indexPath.Row, out var _);
+			}
+
+			protected ITemplatedItemsList<Cell> GetTemplatedItemsListForPath(NSIndexPath indexPath)
+			{
+				var templatedItems = TemplatedItemsView.TemplatedItems;
+				if (List.IsGroupingEnabled)
+					templatedItems = (ITemplatedItemsList<Cell>)((IList)templatedItems)[indexPath.Section];
+
+				return templatedItems;
+			}
+
+			protected DataTemplate GetDataTemplateForPath(NSIndexPath indexPath)
+			{
+				var templatedList = GetTemplatedItemsListForPath(indexPath);
+				var item = templatedList.ListProxy[indexPath.Row];
+				return templatedList.SelectDataTemplate(item);
+			}
+
+			protected Type GetItemTypeForPath(NSIndexPath indexPath)
+			{
+				var templatedList = GetTemplatedItemsListForPath(indexPath);
+				var item = templatedList.ListProxy[indexPath.Row];
+				return item.GetType();
+			}
+
+			protected Cell GetCellForPath(NSIndexPath indexPath)
+			{
+				var templatedItems = GetTemplatedItemsListForPath(indexPath);
+				var cell = templatedItems[indexPath.Row];
+				return cell;
 			}
 
 			void OnShortNamesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -967,10 +1140,7 @@ namespace Xamarin.Forms.Platform.iOS
 				if (selector == null)
 					return DefaultItemTemplateId;
 
-				var templatedList = TemplatedItemsView.TemplatedItems;
-				if (List.IsGroupingEnabled)
-					templatedList = (TemplatedItemsList<ItemsView<Cell>, Cell>)((IList)templatedList)[indexPath.Section];
-
+				var templatedList = GetTemplatedItemsListForPath(indexPath);
 				var item = templatedList.ListProxy[indexPath.Row];
 
 				itemTemplate = selector.SelectTemplate(item, List);
@@ -998,6 +1168,47 @@ namespace Xamarin.Forms.Platform.iOS
 						((INotifyCollectionChanged)templatedList.ShortNames).CollectionChanged -= OnShortNamesCollectionChanged;
 				}
 			}
+
+			protected override void Dispose(bool disposing)
+			{
+				if (_disposed)
+					return;
+
+				if (disposing)
+				{
+					if (List != null)
+					{
+						List.ItemSelected -= OnItemSelected;
+						List = null;
+					}
+
+					_templateToId = null;
+					_uiTableView = null;
+					_uiTableViewController = null;
+				}
+
+				_disposed = true;
+
+				base.Dispose(disposing);
+			}
+
+			void PreserveActivityIndicatorState(Element element)
+			{
+				if (element == null)
+					return;
+
+				var activityIndicator = element as ActivityIndicator;
+				if (activityIndicator != null)
+				{
+					var renderer = Platform.GetRenderer(activityIndicator) as ActivityIndicatorRenderer;
+					renderer?.PreserveState();
+				}
+				else
+				{
+					foreach (Element childElement in (element as IElementController).LogicalChildren)
+						PreserveActivityIndicatorState(childElement);
+				}
+			}
 		}
 	}
 
@@ -1013,11 +1224,11 @@ namespace Xamarin.Forms.Platform.iOS
 
 	internal class FormsUITableViewController : UITableViewController
 	{
-		readonly ListView _list;
-		IListViewController Controller => _list;
+		ListView _list;
 		UIRefreshControl _refresh;
 
 		bool _refreshAdded;
+		bool _disposed;
 
 		public FormsUITableViewController(ListView element)
 		{
@@ -1067,14 +1278,15 @@ namespace Xamarin.Forms.Platform.iOS
 					RefreshControl = _refresh;
 				}
 			}
-			else if (_refreshAdded)
-			{
-				if (_refresh.Refreshing)
-					_refresh.EndRefreshing();
-
-				RefreshControl = null;
-				_refreshAdded = false;
-			}
+			// https://bugzilla.xamarin.com/show_bug.cgi?id=52962
+			// just because pullToRefresh is being disabled does not mean we should kill an in progress refresh. 
+			// Consider the case where:
+			//   1. User pulls to refresh
+			//   2. App RefreshCommand fires (at this point _refresh.Refreshing is true)
+			//   3. RefreshCommand disables itself via a call to ChangeCanExecute which returns false
+			//			(maybe the command it's attached to a button the app wants disabled)
+			//   4. OnCommandCanExecuteChanged handler sets RefreshAllowed to false because the RefreshCommand is disabled
+			//   5. We end up here; A refresh is in progress while being asked to disable pullToRefresh
 		}
 
 		public void UpdateShowHideRefresh(bool shouldHide)
@@ -1090,27 +1302,35 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override void ViewWillAppear(bool animated)
 		{
-			base.ViewWillAppear(animated);
+			(TableView?.Source as ListViewRenderer.ListViewDataSource)?.Cleanup();
+			if (!_list.IsRefreshing || !_refresh.Refreshing) return;
 
-			if (_list.IsRefreshing && _refresh.Refreshing)
-			{
-				// Restart the refreshing to get the animation to trigger
-				UpdateIsRefreshing(false);
-				UpdateIsRefreshing(true);
-			}
+			// Restart the refreshing to get the animation to trigger
+			UpdateIsRefreshing(false);
+			UpdateIsRefreshing(true);
 		}
 
 		protected override void Dispose(bool disposing)
 		{
-			base.Dispose(disposing);
+			if (_disposed)
+				return;
 
-			if (disposing && _refresh != null)
+			if (disposing)
 			{
-				_refresh.ValueChanged -= OnRefreshingChanged;
-				_refresh.EndRefreshing();
-				_refresh.Dispose();
-				_refresh = null;
+				if (_refresh != null)
+				{
+					_refresh.ValueChanged -= OnRefreshingChanged;
+					_refresh.EndRefreshing();
+					_refresh.Dispose();
+					_refresh = null;
+				}
+
+				_list = null;
 			}
+
+			_disposed = true;
+
+			base.Dispose(disposing);
 		}
 
 		void CheckContentSize()
@@ -1124,7 +1344,7 @@ namespace Xamarin.Forms.Platform.iOS
 		void OnRefreshingChanged(object sender, EventArgs eventArgs)
 		{
 			if (_refresh.Refreshing)
-				Controller.SendRefreshing();
+				_list.SendRefreshing();
 		}
 
 		void RemoveRefresh()

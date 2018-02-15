@@ -5,7 +5,7 @@ using Xamarin.Forms.Internals;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve(AllMembers = true)]
 	[Issue(IssueTracker.Bugzilla, 40333, "[Android] IllegalStateException: Recursive entry to executePendingTransactions", PlatformAffected.Android)]
@@ -198,9 +198,19 @@ namespace Xamarin.Forms.Controls
 
 #if __ANDROID__ // These tests don't work in iOS for unrelated reasons (see https://bugzilla.xamarin.com/show_bug.cgi?id=41085)
 
+		static void IgnoreFormsApplicationActivity()
+		{
+			if (AppSetup.IsFormsApplicationActivity)
+			{
+				Assert.Ignore("This test only applies to FormsAppCompatActivity.");
+			}
+		}
+
 		[Test]
 		public void ClickingOnMenuItemInMasterDoesNotCrash_NavPageVersion()
 		{
+			IgnoreFormsApplicationActivity();
+
 			RunningApp.Tap(q => q.Marked(StartNavPageTestId));
 			RunningApp.WaitForElement(q => q.Marked(OpenMasterId));
 
@@ -214,6 +224,8 @@ namespace Xamarin.Forms.Controls
 		[Test]
 		public void ClickingOnMenuItemInMasterDoesNotCrash_TabPageVersion()
 		{
+			IgnoreFormsApplicationActivity();
+
 			RunningApp.Tap(q => q.Marked(StartTabPageTestId));
 			RunningApp.WaitForElement(q => q.Marked(OpenMasterId));
 

@@ -103,7 +103,7 @@ namespace Xamarin.Forms.Core.UnitTests
 			bool android = false;
 			bool winphone = false;
 
-			Device.OS = TargetPlatform.iOS;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.iOS;
 
 			Device.OnPlatform (
 				iOS: () => ios = true,
@@ -124,7 +124,7 @@ namespace Xamarin.Forms.Core.UnitTests
 			bool android = false;
 			bool winphone = false;
 
-			Device.OS = TargetPlatform.Android;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.Android;
 
 			Device.OnPlatform (
 				iOS: () => ios = true,
@@ -137,27 +137,6 @@ namespace Xamarin.Forms.Core.UnitTests
 		}
 
 		[Test]
-		public void TestOnPlatformWinPhone ()
-		{
-			var view = new View ();
-
-			bool ios = false;
-			bool android = false;
-			bool winphone = false;
-
-			Device.OS = TargetPlatform.WinPhone;
-
-			Device.OnPlatform (
-				iOS: () => ios = true,
-				Android: () => android = true,
-				WinPhone: () => winphone = true);
-
-			Assert.False (ios);
-			Assert.False (android);
-			Assert.True (winphone);
-		}
-
-		[Test]
 		public void TestOnPlatformDefault ()
 		{
 			var view = new View ();
@@ -165,7 +144,7 @@ namespace Xamarin.Forms.Core.UnitTests
 			bool ios = false;
 			bool android = false;
 
-			Device.OS = TargetPlatform.Android;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.Android;
 
 			Device.OnPlatform (
 				iOS: () => ios = false,
@@ -179,7 +158,7 @@ namespace Xamarin.Forms.Core.UnitTests
 		public void TestOnPlatformNoOpWithoutDefault ()
 		{
 			bool any = false;
-			Device.OS = TargetPlatform.Other;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = "Other";
 
 			Device.OnPlatform (
 				iOS: () => any = true,
@@ -194,7 +173,7 @@ namespace Xamarin.Forms.Core.UnitTests
 		{
 			bool defaultExecuted = false;
 
-			Device.OS = TargetPlatform.iOS;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.iOS;
 
 			Device.OnPlatform (
 				Android: () => { },
@@ -209,7 +188,7 @@ namespace Xamarin.Forms.Core.UnitTests
 		{
 			bool defaultExecuted = false;
 
-			Device.OS = TargetPlatform.Android;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.Android;
 
 			Device.OnPlatform (
 				iOS: () => { },
@@ -220,26 +199,11 @@ namespace Xamarin.Forms.Core.UnitTests
 		}
 
 		[Test]
-		public void TestDefaultOnWinPhone ()
-		{
-			bool defaultExecuted = false;
-
-			Device.OS = TargetPlatform.WinPhone;
-
-			Device.OnPlatform (
-				iOS: () => { },
-				Android: () => { },
-				Default:() => defaultExecuted = true);
-
-			Assert.True (defaultExecuted);
-		}
-
-		[Test]
 		public void TestDefaultOnOther ()
 		{
 			bool defaultExecuted = false;
 
-			Device.OS = TargetPlatform.Other;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = "Other";
 
 			Device.OnPlatform (
 				iOS: () => { },
@@ -432,16 +396,13 @@ namespace Xamarin.Forms.Core.UnitTests
 		[Test]
 		public void TestOnPlatformGeneric ()
 		{
-			Device.OS = TargetPlatform.WinPhone;
-			Assert.AreEqual (3, Device.OnPlatform (1, 2, 3));
-			
-			Device.OS = TargetPlatform.iOS;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.iOS;
 			Assert.AreEqual (1, Device.OnPlatform (1, 2, 3));
 
-			Device.OS = TargetPlatform.Android;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = Device.Android;
 			Assert.AreEqual (2, Device.OnPlatform (1, 2, 3));
 
-			Device.OS = TargetPlatform.Other;
+			((MockPlatformServices)Device.PlatformServices).RuntimePlatform = "Other";
 			Assert.AreEqual (1, Device.OnPlatform (1, 2, 3));
 		}
 

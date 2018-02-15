@@ -13,7 +13,7 @@ namespace Xamarin.Forms.Controls
 			BackgroundColor = new Color (0.9);
 
 			var normal = new Button { Text = "Normal Button" };
-			normal.Effects.Add (Effect.Resolve ("XamControl.BorderEffect"));
+			normal.Effects.Add (Effect.Resolve ($"{Issues.Effects.ResolutionGroupName}.BorderEffect"));
 
 			var disabled = new Button { Text = "Disabled Button"};
 			var disabledswitch = new Switch ();
@@ -31,8 +31,20 @@ namespace Xamarin.Forms.Controls
 			var click = new Button { Text = "Click Button" };
 			var rotate = new Button { Text = "Rotate Button" };
 			var transparent = new Button { Text = "Transparent Button" };
+			string fontName;
+			switch (Device.RuntimePlatform) {
+			default:
+			case Device.iOS:
+				fontName = "Georgia";
+				break;
+			case Device.Android:
+				fontName = "sans-serif-light";
+				break;
+			case Device.UWP:
+				fontName = "Comic Sans MS";
+				break;
+			}
 
-			var fontName = Device.OnPlatform ("Georgia", "sans-serif-light", "Comic Sans MS");
 			var font = Font.OfSize (fontName, NamedSize.Medium);
 
 			var themedButton = new Button {
@@ -47,7 +59,9 @@ namespace Xamarin.Forms.Controls
 				BorderColor = Color.Black,
 				BackgroundColor = Color.Purple,
 				BorderWidth = 5,
+#pragma warning disable 0618
 				BorderRadius = 5
+#pragma warning restore
 			};
 			var timer = new Button { Text = "Timer" };
 			var busy = new Button { Text = "Toggle Busy" };
@@ -101,6 +115,7 @@ namespace Xamarin.Forms.Controls
 						borderButton,
 						new Button {Text = "Thin Border", BorderWidth = 1, BackgroundColor=Color.White, BorderColor = Color.Black, TextColor = Color.Black},
 						new Button {Text = "Thinner Border", BorderWidth = .5, BackgroundColor=Color.White, BorderColor = Color.Black, TextColor = Color.Black},
+						new Button {Text = "BorderWidth == 0", BorderWidth = 0, BackgroundColor=Color.White, BorderColor = Color.Black, TextColor = Color.Black},
 						timer,
 						busy,
 						alert,

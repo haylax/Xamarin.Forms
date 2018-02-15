@@ -1,11 +1,6 @@
-using System.Drawing;
 using System.ComponentModel;
-#if __UNIFIED__
+using System.Drawing;
 using UIKit;
-
-#else
-using MonoTouch.UIKit;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -48,6 +43,12 @@ namespace Xamarin.Forms.Platform.iOS
 				Control.StartAnimating();
 			else
 				Control.StopAnimating();
+		}
+
+		internal void PreserveState()
+		{
+			if (Control != null && !Control.IsAnimating && Element != null && Element.IsRunning)
+				Control.StartAnimating();
 		}
 	}
 }

@@ -8,6 +8,10 @@ namespace Xamarin.Forms.Platform.Android
 {
 	public static class ContextExtensions
 	{
+		// Caching this display density here means that all pixel calculations are going to be based on the density
+		// of the first Context these extensions are run against. That's probably fine, but if we run into a 
+		// situation where subsequent activities can be launched with a different display density from the intial
+		// activity, we'll need to remove this cached value or cache it in a Dictionary<Context, float>
 		static float s_displayDensity = float.MinValue;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -21,7 +25,9 @@ namespace Xamarin.Forms.Platform.Android
 		public static void HideKeyboard(this Context self, global::Android.Views.View view)
 		{
 			var service = (InputMethodManager)self.GetSystemService(Context.InputMethodService);
-			service.HideSoftInputFromWindow(view.WindowToken, 0);
+			// Can happen in the context of the Android Designer
+			if (service != null)
+				service.HideSoftInputFromWindow(view.WindowToken, 0);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

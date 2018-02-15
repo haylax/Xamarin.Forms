@@ -7,8 +7,6 @@ using Xamarin.Forms;
 
 #if __ANDROID__
 using Xamarin.Forms.Platform.Android;
-#elif WINDOWS_PHONE || WINDOWS_PHONE_APP
-using Xamarin.Forms.Platform.WinPhone;
 #elif __IOS__
 using Xamarin.Forms.Platform.iOS;
 #endif
@@ -34,11 +32,18 @@ namespace Xamarin.Forms.Platform
 
 	[RenderWith (typeof (EditorRenderer))]
 	internal class _EditorRenderer { }
-
+#if __ANDROID__
+	[RenderWith(typeof(Xamarin.Forms.Platform.Android.LabelRenderer))]
+#else
 	[RenderWith (typeof (LabelRenderer))]
+#endif
 	internal class _LabelRenderer { }
 
+#if __ANDROID__
+	[RenderWith(typeof(Xamarin.Forms.Platform.Android.ImageRenderer))]
+#else
 	[RenderWith (typeof (ImageRenderer))]
+#endif
 	internal class _ImageRenderer { }
 
 	[RenderWith (typeof (ButtonRenderer))]

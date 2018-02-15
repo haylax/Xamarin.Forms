@@ -9,8 +9,21 @@ using Xamarin.Forms.Internals;
 
 namespace Xamarin.Forms
 {
-	public abstract class Element : BindableObject, IElement, INameScope, IElementController
+	public abstract partial class Element : BindableObject, IElement, INameScope, IElementController
 	{
+
+		public static readonly BindableProperty MenuProperty = BindableProperty.CreateAttached(nameof(Menu), typeof(Menu), typeof(Element), null);
+
+		public static Menu GetMenu(BindableObject bindable)
+		{
+			return (Menu)bindable.GetValue(MenuProperty);
+		}
+
+		public static void SetMenu(BindableObject bindable, Menu menu)
+		{
+			bindable.SetValue(MenuProperty, menu);
+		}
+
 		internal static readonly ReadOnlyCollection<Element> EmptyChildren = new ReadOnlyCollection<Element>(new Element[0]);
 
 		public static readonly BindableProperty ClassIdProperty = BindableProperty.Create("ClassId", typeof(string), typeof(View), null);
@@ -21,7 +34,7 @@ namespace Xamarin.Forms
 
 		List<Action<object, ResourcesChangedEventArgs>> _changeHandlers;
 
-		List<KeyValuePair<string, BindableProperty>> _dynamicResources;
+		Dictionary<BindableProperty, string> _dynamicResources;
 
 		IEffectControlProvider _effectControlProvider;
 
@@ -76,7 +89,7 @@ namespace Xamarin.Forms
 			}
 		}
 
-		[Obsolete("Use Parent")]
+		[Obsolete("ParentView is obsolete as of version 2.1.0. Please use Parent instead.")]
 		public VisualElement ParentView
 		{
 			get
@@ -109,7 +122,8 @@ namespace Xamarin.Forms
 
 		internal virtual ReadOnlyCollection<Element> LogicalChildrenInternal => EmptyChildren;
 
-		ReadOnlyCollection<Element> IElementController.LogicalChildren => LogicalChildrenInternal;
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public ReadOnlyCollection<Element> LogicalChildren => LogicalChildrenInternal;
 
 		internal bool Owned { get; set; }
 
@@ -133,7 +147,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		internal IPlatform Platform
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public IPlatform Platform
 		{
 			get
 			{
@@ -158,11 +173,12 @@ namespace Xamarin.Forms
 		}
 
 		// you're not my real dad
-		internal Element RealParent { get; private set; }
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public Element RealParent { get; private set; }
 
-		List<KeyValuePair<string, BindableProperty>> DynamicResources
+		Dictionary<BindableProperty, string> DynamicResources
 		{
-			get { return _dynamicResources ?? (_dynamicResources = new List<KeyValuePair<string, BindableProperty>>(4)); }
+			get { return _dynamicResources ?? (_dynamicResources = new Dictionary<BindableProperty, string>()); }
 		}
 
 		void IElement.AddResourcesChangedListener(Action<object, ResourcesChangedEventArgs> onchanged)
@@ -220,7 +236,8 @@ namespace Xamarin.Forms
 			_changeHandlers.Remove(onchanged);
 		}
 
-		IEffectControlProvider IElementController.EffectControlProvider
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public IEffectControlProvider EffectControlProvider
 		{
 			get { return _effectControlProvider; }
 			set
@@ -244,17 +261,21 @@ namespace Xamarin.Forms
 			}
 		}
 
-		void IElementController.SetValueFromRenderer(BindableProperty property, object value)
+		void IElementController.SetValueFromRenderer(BindableProperty property, object value) => SetValueFromRenderer(property, value);
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SetValueFromRenderer(BindableProperty property, object value)
 		{
 			SetValueCore(property, value);
 		}
 
-		void IElementController.SetValueFromRenderer(BindablePropertyKey property, object value)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void SetValueFromRenderer(BindablePropertyKey property, object value)
 		{
 			SetValueCore(property, value);
 		}
 
-		bool IElementController.EffectIsAttached(string name)
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool EffectIsAttached(string name)
 		{
 			foreach (var effect in Effects)
 			{
@@ -280,6 +301,7 @@ namespace Xamarin.Forms
 			namescope.RegisterName(name, scopedElement);
 		}
 
+		[Obsolete]
 		void INameScope.RegisterName(string name, object scopedElement, IXmlLineInfo xmlLineInfo)
 		{
 			INameScope namescope = GetNameScope();
@@ -347,7 +369,7 @@ namespace Xamarin.Forms
 			if (Platform != null)
 				child.Platform = Platform;
 
-			child.ApplyBindings();
+			child.ApplyBindings(skipBindingContext: false, fromBindingContextChanged:true);
 
 			if (ChildAdded != null)
 				ChildAdded(this, new ElementEventArgs(child));
@@ -372,6 +394,7 @@ namespace Xamarin.Forms
 		protected virtual void OnParentSet()
 		{
 			ParentSet?.Invoke(this, EventArgs.Empty);
+			ApplyStyleSheetsOnParentSet();
 		}
 
 		protected override void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -388,7 +411,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		internal IEnumerable<Element> Descendants()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public IEnumerable<Element> Descendants()
 		{
 			var queue = new Queue<Element>(16);
 			queue.Enqueue(this);
@@ -405,9 +429,12 @@ namespace Xamarin.Forms
 			}
 		}
 
-		internal void OnParentResourcesChanged(object sender, ResourcesChangedEventArgs e)
+		internal virtual void OnParentResourcesChanged(object sender, ResourcesChangedEventArgs e)
 		{
-			OnParentResourcesChanged(e.Values);
+			if (e == ResourcesChangedEventArgs.StyleSheets)
+				ApplyStyleSheetsOnParentSet();
+			else
+				OnParentResourcesChanged(e.Values);
 		}
 
 		internal virtual void OnParentResourcesChanged(IEnumerable<KeyValuePair<string, object>> values)
@@ -417,13 +444,14 @@ namespace Xamarin.Forms
 
 		internal override void OnRemoveDynamicResource(BindableProperty property)
 		{
-			DynamicResources.RemoveAll(kvp => kvp.Value == property);
+			DynamicResources.Remove(property);
+
 			if (DynamicResources.Count == 0)
 				_dynamicResources = null;
 			base.OnRemoveDynamicResource(property);
 		}
 
-		internal void OnResourcesChanged(object sender, ResourcesChangedEventArgs e)
+		internal virtual void OnResourcesChanged(object sender, ResourcesChangedEventArgs e)
 		{
 			OnResourcesChanged(e.Values);
 		}
@@ -442,12 +470,16 @@ namespace Xamarin.Forms
 			foreach (KeyValuePair<string, object> value in values)
 			{
 				List<BindableProperty> changedResources = null;
-				foreach (KeyValuePair<string, BindableProperty> dynR in DynamicResources)
+				foreach (KeyValuePair<BindableProperty, string> dynR in DynamicResources)
 				{
-					if (dynR.Key != value.Key)
+					// when the DynamicResource bound to a BindableProperty is
+					// changing then the BindableProperty needs to be refreshed;
+					// The .Value is the name of DynamicResouce to which the BindableProperty is bound.
+					// The .Key is the name of the DynamicResource whose value is changing.
+					if (dynR.Value != value.Key)
 						continue;
 					changedResources = changedResources ?? new List<BindableProperty>();
-					changedResources.Add(dynR.Value);
+					changedResources.Add(dynR.Key);
 				}
 				if (changedResources == null)
 					continue;
@@ -467,7 +499,7 @@ namespace Xamarin.Forms
 		internal override void OnSetDynamicResource(BindableProperty property, string key)
 		{
 			base.OnSetDynamicResource(property, key);
-			DynamicResources.Add(new KeyValuePair<string, BindableProperty>(key, property));
+			DynamicResources[property] = key;
 			object value;
 			if (this.TryGetResource(key, out value))
 				OnResourceChanged(property, value);
@@ -475,7 +507,29 @@ namespace Xamarin.Forms
 
 		internal event EventHandler ParentSet;
 
-		internal event EventHandler PlatformSet;
+		internal static void SetFlowDirectionFromParent(Element child)
+		{
+			IFlowDirectionController controller = child as IFlowDirectionController;
+			if (controller == null)
+				return;
+
+			if (controller.EffectiveFlowDirection.IsImplicit())
+			{
+				var parentView = child.Parent as IFlowDirectionController;
+				if (parentView == null)
+					return;
+
+				var flowDirection = parentView.EffectiveFlowDirection.ToFlowDirection();
+
+				if (flowDirection != controller.EffectiveFlowDirection.ToFlowDirection())
+				{
+					controller.EffectiveFlowDirection = flowDirection.ToEffectiveFlowDirection();
+				}
+			}
+		}
+
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public event EventHandler PlatformSet;
 
 		internal virtual void SetChildInheritedBindingContext(Element child, object context)
 		{
@@ -520,7 +574,7 @@ namespace Xamarin.Forms
 		{
 			foreach (Effect effect in _effects)
 			{
-				effect.ClearEffect();
+				effect?.ClearEffect();
 			}
 		}
 

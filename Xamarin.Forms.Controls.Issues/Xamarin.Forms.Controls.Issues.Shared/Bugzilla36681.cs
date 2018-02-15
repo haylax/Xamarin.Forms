@@ -9,7 +9,7 @@ using Xamarin.UITest;
 using NUnit.Framework;
 #endif
 
-namespace Xamarin.Forms.Controls
+namespace Xamarin.Forms.Controls.Issues
 {
 	[Preserve (AllMembers = true)]
 	[Issue (IssueTracker.Bugzilla, 36681, "[A] NRE when Picker Replaces Page Content (pre-AppCompat only)", PlatformAffected.Android)]
@@ -64,11 +64,10 @@ namespace Xamarin.Forms.Controls
 			Children.Add (new ContentPage { BackgroundColor = Color.Blue, Title = "Page 2" });
 		}
 
-#if UITEST
+#if UITEST && __ANDROID__
 		[Test]
 		public void Bugzilla36681Test ()
 		{
-			if (RunningApp is Xamarin.UITest.Android.AndroidApp) {
 				RunningApp.WaitForElement (q => q.Marked ("picker"));
 				RunningApp.Tap ("picker");
 				var ok = RunningApp.Query ("OK");
@@ -82,7 +81,6 @@ namespace Xamarin.Forms.Controls
 					RunningApp.Tap ("item2");
 				}
 				RunningApp.WaitForElement (q => q.Marked ("Success!"));
-			}
 		}
 #endif
 	}

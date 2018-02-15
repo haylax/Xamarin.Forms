@@ -7,27 +7,18 @@ namespace Xamarin.Forms.Xaml
 	{
 		readonly Dictionary<INode, INameScope> scopes = new Dictionary<INode, INameScope>();
 
-		public NamescopingVisitor(HydratationContext context)
+		public NamescopingVisitor(HydrationContext context)
 		{
 			Values = context.Values;
 		}
 
 		Dictionary<INode, object> Values { get; set; }
 
-		public bool VisitChildrenFirst
-		{
-			get { return false; }
-		}
-
-		public bool StopOnDataTemplate
-		{
-			get { return false; }
-		}
-
-		public bool StopOnResourceDictionary
-		{
-			get { return false; }
-		}
+		public TreeVisitingMode VisitingMode => TreeVisitingMode.TopDown;
+		public bool StopOnDataTemplate => false;
+		public bool StopOnResourceDictionary => false;
+		public bool VisitNodeOnDataTemplate => true;
+		public bool SkipChildren(INode node, INode parentNode) => false;
 
 		public void Visit(ValueNode node, INode parentNode)
 		{
@@ -41,7 +32,7 @@ namespace Xamarin.Forms.Xaml
 
 		public void Visit(ElementNode node, INode parentNode)
 		{
-			var ns = parentNode == null || IsDataTemplate(node, parentNode) || IsStyle(node, parentNode)
+			var ns = parentNode == null || IsDataTemplate(node, parentNode) || IsStyle(node, parentNode) || IsVisualStateGroupList(node)
 				? new NameScope()
 				: scopes[parentNode];
 			node.Namescope = ns;
@@ -74,6 +65,11 @@ namespace Xamarin.Forms.Xaml
 		{
 			var pnode = parentNode as ElementNode;
 			return pnode != null && pnode.XmlType.Name == "Style";
+		}
+
+		static bool IsVisualStateGroupList(ElementNode node)
+		{
+			return node != null  && node.XmlType.Name == "VisualStateGroup" && node.Parent is IListNode;
 		}
 	}
 }

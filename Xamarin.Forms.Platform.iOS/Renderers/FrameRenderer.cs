@@ -1,11 +1,6 @@
 using System.ComponentModel;
 using System.Drawing;
-#if __UNIFIED__
 using UIKit;
-
-#else
-using MonoTouch.UIKit;
-#endif
 
 namespace Xamarin.Forms.Platform.iOS
 {
@@ -23,14 +18,22 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			base.OnElementPropertyChanged(sender, e);
 
-			if (e.PropertyName == VisualElement.BackgroundColorProperty.PropertyName || e.PropertyName == Xamarin.Forms.Frame.OutlineColorProperty.PropertyName ||
-				e.PropertyName == Xamarin.Forms.Frame.HasShadowProperty.PropertyName)
+			if (e.PropertyName == VisualElement.BackgroundColorProperty.PropertyName ||
+			    e.PropertyName == Xamarin.Forms.Frame.BorderColorProperty.PropertyName ||
+				e.PropertyName == Xamarin.Forms.Frame.HasShadowProperty.PropertyName ||
+				e.PropertyName == Xamarin.Forms.Frame.CornerRadiusProperty.PropertyName)
 				SetupLayer();
 		}
 
 		void SetupLayer()
 		{
-			Layer.CornerRadius = 5;
+			float cornerRadius = Element.CornerRadius;
+
+			if (cornerRadius == -1f)
+				cornerRadius = 5f; // default corner radius
+
+			Layer.CornerRadius = cornerRadius;
+
 			if (Element.BackgroundColor == Color.Default)
 				Layer.BackgroundColor = UIColor.White.CGColor;
 			else
@@ -46,11 +49,11 @@ namespace Xamarin.Forms.Platform.iOS
 			else
 				Layer.ShadowOpacity = 0;
 
-			if (Element.OutlineColor == Color.Default)
+			if (Element.BorderColor == Color.Default)
 				Layer.BorderColor = UIColor.Clear.CGColor;
 			else
 			{
-				Layer.BorderColor = Element.OutlineColor.ToCGColor();
+				Layer.BorderColor = Element.BorderColor.ToCGColor();
 				Layer.BorderWidth = 1;
 			}
 

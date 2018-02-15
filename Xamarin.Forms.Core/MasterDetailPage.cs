@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using Xamarin.Forms.Internals;
 using Xamarin.Forms.Platform;
 
 namespace Xamarin.Forms
@@ -9,8 +11,8 @@ namespace Xamarin.Forms
 	{
 		public static readonly BindableProperty IsGestureEnabledProperty = BindableProperty.Create("IsGestureEnabled", typeof(bool), typeof(MasterDetailPage), true);
 
-		public static readonly BindableProperty IsPresentedProperty = BindableProperty.Create("IsPresented", typeof(bool), typeof(MasterDetailPage), default(bool),
-			propertyChanged: OnIsPresentedPropertyChanged, propertyChanging: OnIsPresentedPropertyChanging);
+		public static readonly BindableProperty IsPresentedProperty = BindableProperty.Create("IsPresented", typeof(bool), typeof(MasterDetailPage),default(bool),
+			propertyChanged: OnIsPresentedPropertyChanged, propertyChanging: OnIsPresentedPropertyChanging, defaultValueCreator : GetDefaultValue);
 
 		public static readonly BindableProperty MasterBehaviorProperty = BindableProperty.Create("MasterBehavior", typeof(MasterBehavior), typeof(MasterDetailPage), default(MasterBehavior),
 			propertyChanged: OnMasterBehaviorPropertyChanged);
@@ -22,8 +24,6 @@ namespace Xamarin.Forms
 		Page _master;
 
 		Rectangle _masterBounds;
-
-		IPageController PageController => this as IPageController;
 
 		public Page Detail
 		{
@@ -41,9 +41,9 @@ namespace Xamarin.Forms
 
 				OnPropertyChanging();
 				if (_detail != null)
-					PageController.InternalChildren.Remove(_detail);
+					InternalChildren.Remove(_detail);
 				_detail = value;
-				PageController.InternalChildren.Add(_detail);
+				InternalChildren.Add(_detail);
 				OnPropertyChanged();
 			}
 		}
@@ -79,9 +79,9 @@ namespace Xamarin.Forms
 
 				OnPropertyChanging();
 				if (_master != null)
-					PageController.InternalChildren.Remove(_master);
+					InternalChildren.Remove(_master);
 				_master = value;
-				PageController.InternalChildren.Add(_master);
+				InternalChildren.Add(_master);
 				OnPropertyChanged();
 			}
 		}
@@ -92,9 +92,11 @@ namespace Xamarin.Forms
 			set { SetValue(MasterBehaviorProperty, value); }
 		}
 
-		bool IMasterDetailPageController.CanChangeIsPresented { get; set; } = true;
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool CanChangeIsPresented { get; set; } = true;
 
-		Rectangle IMasterDetailPageController.DetailBounds
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public Rectangle DetailBounds
 		{
 			get { return _detailBounds; }
 			set
@@ -106,7 +108,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		Rectangle IMasterDetailPageController.MasterBounds
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public Rectangle MasterBounds
 		{
 			get { return _masterBounds; }
 			set
@@ -118,7 +121,8 @@ namespace Xamarin.Forms
 			}
 		}
 
-		bool IMasterDetailPageController.ShouldShowSplitMode
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public bool ShouldShowSplitMode
 		{
 			get
 			{
@@ -159,7 +163,7 @@ namespace Xamarin.Forms
 
 		protected override void OnAppearing()
 		{
-			((IMasterDetailPageController)this).CanChangeIsPresented = true;
+			CanChangeIsPresented = true;
 			UpdateMasterBehavior(this);
 			base.OnAppearing();
 		}
@@ -172,7 +176,7 @@ namespace Xamarin.Forms
 					return true;
 			}
 
-			EventHandler<BackButtonPressedEventArgs> handler = BackButtonPressedInternal;
+			EventHandler<BackButtonPressedEventArgs> handler = BackButtonPressed;
 			if (handler != null)
 			{
 				var args = new BackButtonPressedEventArgs();
@@ -196,25 +200,22 @@ namespace Xamarin.Forms
 			base.OnParentSet();
 		}
 
-		event EventHandler<BackButtonPressedEventArgs> BackButtonPressedInternal;
-		event EventHandler<BackButtonPressedEventArgs> IMasterDetailPageController.BackButtonPressed
-		{
-			add { BackButtonPressedInternal += value; }
-			remove { BackButtonPressedInternal -= value; }
-		}
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public event EventHandler<BackButtonPressedEventArgs> BackButtonPressed;
 
-		void IMasterDetailPageController.UpdateMasterBehavior()
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		public void UpdateMasterBehavior()
 		{
 			UpdateMasterBehavior(this);
 		}
 
 		internal static void UpdateMasterBehavior(MasterDetailPage page)
 		{
-			if (((IMasterDetailPageController)page).ShouldShowSplitMode)
+			if (page.ShouldShowSplitMode)
 			{
 				page.SetValueCore(IsPresentedProperty, true);
 				if (page.MasterBehavior != MasterBehavior.Default)
-					((IMasterDetailPageController)page).CanChangeIsPresented = false;
+					page.CanChangeIsPresented = false;
 			}
 		}
 
@@ -229,7 +230,7 @@ namespace Xamarin.Forms
 		static void OnIsPresentedPropertyChanging(BindableObject sender, object oldValue, object newValue)
 		{
 			var page = (MasterDetailPage)sender;
-			if (!((IMasterDetailPageController)page).CanChangeIsPresented)
+			if (!page.CanChangeIsPresented)
 				throw new InvalidOperationException(string.Format("Can't change IsPresented when setting {0}", page.MasterBehavior));
 		}
 
@@ -237,6 +238,11 @@ namespace Xamarin.Forms
 		{
 			var page = (MasterDetailPage)sender;
 			UpdateMasterBehavior(page);
+		}
+
+		static object GetDefaultValue(BindableObject bindable)
+		{
+			return Device.RuntimePlatform == Device.macOS;
 		}
 
 		public MasterDetailPage()
